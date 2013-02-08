@@ -1,0 +1,51 @@
+<!--/*--><![CDATA[/*><!--*/
+
+table {
+  width: 100%;
+  border-spacing: 0px;
+  /* border-collapse: collapse; */
+}
+
+table caption {
+  margin-bottom: 10px;
+  text-align: left;
+  font-size: 22px;
+  line-height: 22px;
+  font-style: italic;
+  color: #999999;
+  font-weight: bold;
+  margin-bottom: 12px;
+  font-family: arial, "lucida console", sans-serif;
+}
+
+table th,
+table td {
+  padding: 2px;
+  padding-left: 10px;
+  padding-right: 10px;
+  text-align: left;
+  background: none;
+}
+
+.gridview thead td {
+  white-space: nowrap;
+}
+
+table tr {
+  position: relative;
+}
+
+table thead tr th {
+  border-bottom: 1px solid #E7E7E7;
+  font-weight: bold;
+}
+
+table tbody tr.row td {
+  border-bottom: 1px solid #E7E7E7;
+}
+
+table tbody tr.row_alt td {
+  border-bottom: 1px solid #E7E7E7;
+}
+
+/*]]>*/-->
