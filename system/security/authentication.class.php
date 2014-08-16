@@ -3,14 +3,14 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Security;
 
 
 	/**
 	 * Provides application wide authentication
-	 *
+	 * 
 	 * @package			PHPRum
 	 * @subpackage		Security
 	 * @author			Darnell Shinbine
@@ -22,6 +22,12 @@
 		 * @var string
 		 */
 		static public $identity;
+
+		/**
+		 * sets the log level, default HighLevelEvents
+		 * @var int
+		 */
+		static public $logLevel = 2;
 
 		/**
 		 * specifies whether the current controller is protected
@@ -54,21 +60,29 @@
 
 				if( $status->authenticated() )
 				{
-					\Rum::log("User `{$username}` logged in from IP {$_SERVER["REMOTE_ADDR"]}", 'security');
+					Authentication::$identity = $username;
+
+					if(self::$logLevel>=AuthenticationLogLevel::AllEvents())
+					{
+						\Rum::log("User `{$username}` logged in from IP {$_SERVER["REMOTE_ADDR"]}", 'security');
+					}
 				}
 				else
 				{
-					if( $status->invalidCredentials() )
+					if(self::$logLevel>=AuthenticationLogLevel::HighLevelEvents())
 					{
-						\Rum::log("Failed login attempt for user `{$username}` from IP {$_SERVER["REMOTE_ADDR"]}", 'security');
-					}
-					elseif( $status->disabled() )
-					{
-						\Rum::log("Blocked login for suspended user `{$username}` from IP {$_SERVER["REMOTE_ADDR"]}", 'security');
-					}
-					elseif( $status->lockedOut() )
-					{
-						\Rum::log("Blocked login due to too many failed login attempts for user `{$username}` from IP {$_SERVER["REMOTE_ADDR"]}", 'security');
+						if( $status->invalidCredentials() )
+						{
+							\Rum::log("Failed login attempt for user `{$username}` from IP {$_SERVER["REMOTE_ADDR"]}", 'security');
+						}
+						elseif( $status->disabled() )
+						{
+							\Rum::log("Blocked login for suspended user `{$username}` from IP {$_SERVER["REMOTE_ADDR"]}", 'security');
+						}
+						elseif( $status->lockedOut() )
+						{
+							\Rum::log("Blocked login due to too many failed login attempts for user `{$username}` from IP {$_SERVER["REMOTE_ADDR"]}", 'security');
+						}
 					}
 				}
 
@@ -85,27 +99,51 @@
 
 
 		/**
-		 * perform sign out (does not end session)
+		 * authenticate user based on credentials (does not set cookie)
 		 *
-		 * @return  void
+		 * @param   string	$username	specifies username
+		 * @return  bool
 		 */
-		public static function signout()
-		{
-			if(Authentication::$identity)
-			{
-				\Rum::log("User `".Authentication::$identity."` logged out from IP {$_SERVER["REMOTE_ADDR"]}", 'security');
+		public static function authorize( $username ) {
+
+			// Authenticate using credentials users
+			foreach( \System\Base\ApplicationBase::getInstance()->config->authenticationCredentialsUsers as $credential ) {
+				$credential = new UserCredential($credential);
+
+				if( $credential->authorize( $username ) ) {
+					return true;
+				}
 			}
 
-			// Basic Authentication
-			if( \System\Security\Authentication::getAuthMethod() === 'basic' )
-			{
-				BasicAuthentication::signout();
+			// Authenticate using credentials tables
+			foreach( \System\Base\ApplicationBase::getInstance()->config->authenticationCredentialsTables as $credential ) {
+				$credential = new TableCredential($credential);
+
+				if( $credential->authorize( $username ) ) {
+					return true;
+				}
 			}
-			// Forms Authentication
-			elseif( \System\Security\Authentication::getAuthMethod() === 'forms' )
-			{
-				FormsAuthentication::signout();
+
+			// Authenticate using credentials tables
+			foreach( \System\Base\ApplicationBase::getInstance()->config->authenticationCredentialsLDAP as $credential ) {
+				$credential = new LDAPCredential($credential);
+
+				if( $credential->authorize( $username ) ) {
+					return true;
+				}
 			}
+
+			// Authenticate using custom objects
+			foreach( \System\Base\ApplicationBase::getInstance()->config->authenticationCredentialsCustom as $credential ) {
+				$credentialObject = new $credential["class"]($credential);
+
+				if( $credentialObject->authorize( $username ) ) {
+					return true;
+				}
+			}
+
+			// Invalid credentials
+			return false;
 		}
 
 
@@ -164,7 +202,7 @@
 			if( \System\Security\Authentication::isProtected( \System\Web\WebApplicationBase::getInstance()->requestHandler->controllerId ))
 			{
 				$denyRoles = array();
-				$allowRoles = array();
+//				$allowRoles = array();
 
 				if(\System\Web\WebApplicationBase::getInstance()->requestHandler->denyRoles)
 				{
@@ -172,25 +210,26 @@
 				}
 				else
 				{
-					if(isset(\System\Web\WebApplicationBase::getInstance()->config->authorizationPages[\System\Web\WebApplicationBase::getInstance()->requestHandler->controllerId]["deny"]))
+					if(isset(\Rum::config()->authorizationPages[\System\Web\WebApplicationBase::getInstance()->requestHandler->controllerId]["deny"]))
 					{
-						$denyRoles = \System\Web\WebApplicationBase::getInstance()->config->authorizationPages[\System\Web\WebApplicationBase::getInstance()->requestHandler->controllerId]["deny"];
+						$denyRoles = \Rum::config()->authorizationPages[\System\Web\WebApplicationBase::getInstance()->requestHandler->controllerId]["deny"];
 					}
 					else
 					{
-						$denyRoles = \System\Web\WebApplicationBase::getInstance()->config->authorizationDeny;
+						$denyRoles = \Rum::config()->authorizationDeny;
 					}
 				}
+
 				$allowRoles = \System\Web\WebApplicationBase::getInstance()->requestHandler->getRoles();
 				if(!$allowRoles)
 				{
-					if(isset(\System\Web\WebApplicationBase::getInstance()->config->authorizationPages[\System\Web\WebApplicationBase::getInstance()->requestHandler->controllerId]["allow"]))
+					if(isset(\Rum::config()->authorizationPages[\System\Web\WebApplicationBase::getInstance()->requestHandler->controllerId]["allow"]))
 					{
-						$allowRoles = \System\Web\WebApplicationBase::getInstance()->config->authorizationPages[\System\Web\WebApplicationBase::getInstance()->requestHandler->controllerId]["allow"];
+						$allowRoles = \Rum::config()->authorizationPages[\System\Web\WebApplicationBase::getInstance()->requestHandler->controllerId]["allow"];
 					}
 					else
 					{
-						$allowRoles = \System\Web\WebApplicationBase::getInstance()->config->authorizationAllow;
+						$allowRoles = \Rum::config()->authorizationAllow;
 					}
 				}
 
@@ -336,6 +375,31 @@
 
 
 		/**
+		 * perform sign out (does not end session)
+		 *
+		 * @return  void
+		 */
+		public static function signout()
+		{
+			if(Authentication::$identity)
+			{
+				\Rum::log("User `".Authentication::$identity."` logged out from IP {$_SERVER["REMOTE_ADDR"]}", 'security');
+			}
+
+			// Basic Authentication
+			if( \System\Security\Authentication::getAuthMethod() === 'basic' )
+			{
+				BasicAuthentication::signout();
+			}
+			// Forms Authentication
+			elseif( \System\Security\Authentication::getAuthMethod() === 'forms' )
+			{
+				FormsAuthentication::signout();
+			}
+		}
+
+
+		/**
 		 * returns true if controller is protected (requires authenctication to process)
 		 *
 		 * @param   string		id of controller
@@ -416,7 +480,7 @@
 		 */
 		private static function getAuthStatus( $username, $password ) {
 
-			// Authenticate using credentials users
+			// Authenticate using user credentials
 			foreach( \System\Base\ApplicationBase::getInstance()->config->authenticationCredentialsUsers as $credential ) {
 				$credential = new UserCredential($credential);
 
@@ -431,6 +495,27 @@
 				$credential = new TableCredential($credential);
 
 				$status = $credential->authenticate( $username, $password );
+				if( !$status->invalidCredentials() ) {
+					return $status;
+				}
+			}
+
+			// Authenticate using LDAP
+			foreach( \System\Base\ApplicationBase::getInstance()->config->authenticationCredentialsLDAP as $credential ) {
+				$credential = new LDAPCredential($credential);
+
+				$status = $credential->authenticate( $username, $password );
+				if( !$status->invalidCredentials() ) {
+					return $status;
+				}
+			}
+
+			// Authenticate using custom objects
+			foreach( \System\Base\ApplicationBase::getInstance()->config->authenticationCredentialsCustom as $credential ) {
+				
+				$credentialObject = new $credential["class"]($credential);
+
+				$status = $credentialObject->authenticate( $username, $password );
 				if( !$status->invalidCredentials() ) {
 					return $status;
 				}

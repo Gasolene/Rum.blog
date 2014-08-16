@@ -17,9 +17,6 @@
 	// include framework loader
 	include '../system/base/rum.php';
 
-	// include application
-	include '../app/myblog.class.php';
-
 	// create instance of the application and run!!!
 	\System\Base\ApplicationBase::getInstance(new MyBlog())->run();
 ?>

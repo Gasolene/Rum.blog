@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -20,22 +20,30 @@
 		/**
 		 * get item text
 		 *
-		 * @param string $dataField
-		 * @param string $parameter
-		 * @param string $params
 		 * @return string
 		 */
-		protected function getItemText($dataField, $parameter, $params)
+		public function fetchUpdateControl()
 		{
 			if($this->ajaxPostBack)
 			{
-				$params .= "&{$parameter}=\'+this.checked+\'";
-				return '\'<input type="checkbox" value="'.$parameter.'" \'.(%'.$dataField.'%?\'checked="checked"\':\'\').\' class="checkbox" onchange="PHPRum.httpRequestObjects[\\\''.strtolower($parameter).'HTTPRequest\\\'] = PHPRum.sendHttpRequest(\\\''.\System\Web\WebApplicationBase::getInstance()->config->uri.'/\\\',\\\''.$this->escape($params).'\\\',\\\'POST\\\', function() { PHPRum.evalHttpResponse(\\\'PHPRum.httpRequestObjects[\\\\\\\''.strtolower($parameter).'HTTPRequest\\\\\\\']\\\') } );" />\'';
+				$uri = \Rum::config()->uri;
+				$params = $this->getRequestData() . "&".$this->formatParameter($this->pkey)."='.\\rawurlencode(%{$this->pkey}%).'&{$this->parameter}=\'+(this.checked?1:0)+\'";
+				return "'<input {$this->getAttrs()} type=\"checkbox\" value=\"1\" '.(%{$this->dataField}%?'checked=\"checked\"':'').' onchange=\"Rum.evalAsync(\'{$uri}/\',\'".$this->escape($params)."\',\'POST\',".\addslashes($this->ajaxStartHandler).",".\addslashes($this->ajaxCompletionHandler).");\" />'";
 			}
 			else
 			{
-				return '\'<input type="checkbox" value="'.$parameter.'" \'.(%'.$dataField.'%?\'checked="checked"\':\'\').\' class="checkbox" />\'';
+				return "'<input name=\"{$this->parameter}\" type=\"hidden\" value=\"0\"/><input {$this->getAttrs()} type=\"checkbox\" value=\"1\" '.(%{$this->dataField}%?'checked=\"checked\"':'').'/>'";
 			}
+		}
+
+		/**
+		 * get footer text
+		 *
+		 * @return string
+		 */
+		public function fetchInsertControl()
+		{
+			return "'<input name=\"{$this->parameter}\"".($this->default?' checked="checked"':'')." type=\"hidden\" value=\"0\"/><input {$this->getAttrs()} type=\"checkbox\" value=\"1\"/>'";
 		}
 	}
 ?>

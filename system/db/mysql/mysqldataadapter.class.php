@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\DB\MySQL;
 	use \System\DB\DataAdapter;
@@ -131,29 +131,19 @@
 
 
 		/**
-		 * Executes a query procedure on the current connection and return the result
+		 * prepare an SQL statement
+		 * Creates a prepared statement bound to parameters specified by the @symbol
+		 * e.g. SELECT * FROM `table` WHERE user=@user
 		 *
-		 * @param  string		$query		sql query
-		 * @param  bool		$buffer		buffer resultset
-		 * @return resource
+		 * @param  string	$statement	SQL statement
+		 * @param  array	$parameters	array of parameters to bind
+		 * @return SQLStatement
 		 */
-		protected function query( $query, $buffer )
+		public function prepare($statement, array $parameters = array())
 		{
-			if( $this->link )
-			{
-				$result = \mysql_query( $query, $this->link );
-
-				if( !$result )
-				{
-					throw new \System\DB\DatabaseException( \mysql_error( $this->link ));
-				}
-
-				return $result;
-			}
-			else
-			{
-				throw new \System\DB\DataAdapterException("MySQL resource in not a valid link identifier");
-			}
+			$mysqlStatement = new MySQLStatement($this, $this->link);
+			$mysqlStatement->prepare($statement, $parameters);
+			return $mysqlStatement;
 		}
 
 
@@ -167,7 +157,8 @@
 		{
 			if( $this->link )
 			{
-				$result = $this->runQuery( $ds->source );
+				$result = $this->query( $ds->source );
+
 				if( $result )
 				{
 					$fields = array();
@@ -185,21 +176,18 @@
 							'length' => \mysql_field_len($result, $i),
 							'notNull' => (bool) $meta->not_null,
 							'primaryKey' => (bool) $meta->primary_key,
-							'multipleKey' => (bool) $meta->multiple_key,
 							'foreignKey' => false,
 							'unique' => (bool) $meta->unique_key,
 							'numeric' => (bool) $meta->numeric,
-							'blob' => (bool) $meta->blob,
 							'string' => \mysql_field_type($result, $i) === 'string',
-							'integer' => \mysql_field_type($result, $i) === 'int',
+							'integer' => \mysql_field_type( $result, $i ) === 'int',
 							'real' => \mysql_field_type($result, $i) === 'real',
-							'year' => \mysql_field_type($result, $i) === 'year',
 							'date' => \mysql_field_type($result, $i) === 'date',
 							'time' => \mysql_field_type($result, $i) === 'time',
 							'datetime' => \mysql_field_type($result, $i) === 'datetime',
 							'boolean' => \mysql_field_len($result, $i) === 1 && \mysql_field_type($result, $i) === 'int',
 							'autoIncrement' => \strpos( mysql_field_flags($result, $i), 'auto_increment' ) !== false,
-							'binary' => \strpos( mysql_field_flags($result, $i), 'binary' ) !== false));
+							'blob' => \strpos( mysql_field_flags($result, $i), 'binary' ) !== false));
 					}
 
 					$rows = array();
@@ -237,7 +225,7 @@
 			$databaseProperties = array();
 			$tableSchemas = array();
 
-			$tables = $this->runQuery( "SHOW TABLES" );
+			$tables = $this->query( "SHOW TABLES" );
 			while($table = \mysql_fetch_array($tables, MYSQL_NUM))
 			{
 				$i=0;
@@ -245,7 +233,7 @@
 				$foreignKeys = array();
 				$columnSchemas = array();
 
-				$columns = $this->runQuery( "SELECT * FROM `{$table[0]}` WHERE 0" );
+				$columns = $this->query( "SELECT * FROM `{$table[0]}` WHERE 0" );
 				while($i < \mysql_num_fields($columns))
 				{
 					$meta = \mysql_fetch_field($columns, $i);
@@ -262,21 +250,18 @@
 						'length' => \mysql_field_len($columns, $i),
 						'notNull' => (bool) $meta->not_null,
 						'primaryKey' => (bool) $meta->primary_key,
-						'multipleKey' => (bool) $meta->multiple_key,
 						'foreignKey' => false,
 						'unique' => (bool) $meta->unique_key,
 						'numeric' => (bool) $meta->numeric,
-						'blob' => (bool) $meta->blob,
 						'string' => \mysql_field_type($columns, $i) === 'string',
-						'integer' => \mysql_field_type($columns, $i) === 'int',
+						'integer' => \mysql_field_type($columns, $i ) === 'int',
 						'real' => \mysql_field_type($columns, $i) === 'real',
-						'year' => \mysql_field_type($columns, $i) === 'year',
 						'date' => \mysql_field_type($columns, $i) === 'date',
 						'time' => \mysql_field_type($columns, $i) === 'time',
 						'datetime' => \mysql_field_type($columns, $i) === 'datetime',
 						'boolean' => \mysql_field_len($columns, $i) === 1 && \mysql_field_type( $columns, $i ) === 'int',
 						'autoIncrement' => \strpos( mysql_field_flags($columns, $i), 'auto_increment' ) !== false,
-						'binary' => \strpos( mysql_field_flags($columns, $i), 'binary' ) !== false));
+						'blob' => \strpos( mysql_field_flags($columns, $i), 'binary' ) !== false));
 
 					$i++;
 				}
@@ -295,12 +280,13 @@
 		 */
 		public function addTableSchema( \System\DB\TableSchema &$tableSchema )
 		{
+			$primaryKeys = array();
+			$indexKeys = array();
+			$uniqueKeys = array();
 			$columns = "";
+
 			foreach($tableSchema->columnSchemas as $columnSchema)
 			{
-				$primaryKeys = array();
-				$indexKeys = array();
-				$uniqueKeys = array();
 				$type = "";
 
 				if($columnSchema->integer)
@@ -314,10 +300,6 @@
 				elseif($columnSchema->boolean)
 				{
 					$type = "TINYINT(1)";
-				}
-				elseif($columnSchema->year)
-				{
-					$type = "YEAR";
 				}
 				elseif($columnSchema->date)
 				{
@@ -435,7 +417,7 @@
 				$this->queryBuilder()
 					->insertInto($ds->table, $ds->fields)
 					->values($ds->row)
-					->runQuery();
+					->execute();
 
 				if($tableSchema->primaryKey)
 				{
@@ -467,7 +449,7 @@
 						->update($ds->table)
 						->setColumns($ds->table, $ds->fields, $ds->row)
 						->where($ds->table, $tableSchema->primaryKey, '=', $ds[$tableSchema->primaryKey])
-						->runQuery();
+						->execute();
 				}
 				else
 				{
@@ -499,7 +481,7 @@
 						->delete()
 						->from($ds->table)
 						->where($ds->table, $tableSchema->primaryKey, '=', $ds[$tableSchema->primaryKey])
-						->runQuery();
+						->execute();
 				}
 				else
 				{
@@ -516,11 +498,11 @@
 		/**
 		 * creats a QueryBuilder object
 		 *
-		 * @return MySQLQueryBuilder
+		 * @return SQLQueryBuilder
 		 */
 		public function queryBuilder()
 		{
-			return new MySQLQueryBuilder($this);
+			return new MySQLQueryBuilder($this, $this->link);
 		}
 
 

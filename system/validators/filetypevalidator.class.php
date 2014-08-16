@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Validators;
 
@@ -60,39 +60,23 @@
 		 */
 		protected function onLoad()
 		{
-			if($this->controlToValidate)
-			{
-				$this->errorMessage = $this->errorMessage?$this->errorMessage:"{$this->controlToValidate->label} " . \System\Base\ApplicationBase::getInstance()->translator->get('must_be_a_valid_file_type', 'must be a valid file type') . ": " . \implode(', ', $this->types);
-			}
+			$this->errorMessage = $this->errorMessage?$this->errorMessage:$this->label.' '.\System\Base\ApplicationBase::getInstance()->translator->get('is_not_a_valid_file_type');
 		}
 
 
 		/**
-		 * validates the control
+		 * validates the passed value
 		 *
+		 * @param  mixed $value value to validate
 		 * @return bool
 		 */
-		public function validate()
+		public function validate($value)
 		{
-			if($this->controlToValidate)
+			if( array_search( $value['type'], $this->types ) === false )
 			{
-				if( isset( $_FILES[$this->controlToValidate->getHTMLControlIdString()] ))
-				{
-					if( $_FILES[$this->controlToValidate->getHTMLControlIdString()]['size'] > 0 )
-					{
-						if( array_search( $_FILES[$this->controlToValidate->getHTMLControlIdString()]['type'], $this->types ) === false )
-						{
-							return false;
-						}
-					}
-				}
-
-				return true;
+				return false;
 			}
-			else
-			{
-				throw new \System\Base\InvalidOperationException("no control to validate");
-			}
+			return true;
 		}
 	}
 ?>

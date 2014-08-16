@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -105,6 +105,15 @@
 		public function __get( $field ) {
 			if( $field === 'onload' ) {
 				return $this->onload;
+			}
+			elseif( $field === 'submit' )
+			{
+				if(null===$this->findControl('submit')) {
+					throw new \System\Base\InvalidOperationException("ActiveRecordBase::form()->submit is no longer generated");
+				}
+				else {
+					return $this->findControl('submit');
+				}
 			}
 			else {
 				return parent::__get( $field );
@@ -222,6 +231,19 @@
 
 
 		/**
+		 * load javascript content into JScript buffer
+		 *
+		 * @param  string	$javaScript		javascript to execute
+		 * @return void
+		 */
+		final public function loadJScript( $javaScript )
+		{
+			$this->onload .= $javaScript . ';';
+			$this->loadAjaxJScriptBuffer($javaScript);
+		}
+
+
+		/**
 		 * load content into ajax output buffer
 		 *
 		 * @param  string	$output		output content
@@ -236,12 +258,12 @@
 		/**
 		 * load content into ajax jscript output buffer
 		 *
-		 * @param  string	$javaScript		output javascript content
+		 * @param  string	$javaScript		javascript to execute
 		 * @return void
 		 */
 		final public function loadAjaxJScriptBuffer( $javaScript )
 		{
-			$this->loadAjaxBuffer(\str_replace("\n", "\\n\\", $javaScript));
+			$this->loadAjaxBuffer(\str_replace("\n", "\\n", $javaScript));
 		}
 
 
@@ -301,20 +323,6 @@
 				throw new \System\Base\InvalidOperationException("cannot fetch while rendering");
 			}
 		}
-
-
-		/**
-		 * Event called when control is initiated
-		 *
-		 * @return void
-		 */
-		protected function onInit()
-        {
-			parent::onInit();
-
-			$this->addScript( \System\Web\WebApplicationBase::getInstance()->config->assets . '/page/page.js' );
-			$this->onload .= 'PHPRum.asyncParameter = \''.__ASYNC_REQUEST_PARAMETER__.'\';';
-        }
 
 
 		/**

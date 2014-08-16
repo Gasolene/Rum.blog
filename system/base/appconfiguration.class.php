@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Base;
 
@@ -19,7 +19,8 @@
 	 * @property bool $viewStateEnabled specifies whether viewstate is enabled
 	 * @property string $viewStateMethod specifies the viewstate method
 	 * @property int $viewStateExpires specifies the viewstate expiration in seconds form the current time
-	 * @property string $themes path to themes folder
+	 * @property string $themesPath path to themes folder
+	 * @property string $themesURI uri to themes folder
 	 * @property string $defaultController specifies default controller
 	 * @property string $requestParameter specifies page request parameter
 	 * @property bool $rewriteURIS specifies whether to rewrite URI's
@@ -38,8 +39,11 @@
 	 * @property string $authenticationFormsLoginPage specifies authentication login page
 	 * @property string $authenticationFormsCookieName specifies session cookie name
 	 * @property string $authenticationFormsSecret specifies secret used when checking auth cookies
+	 * @property string $authenticationFormsExpires specifies the inactive time before session expires in seconds
 	 * @property array $authenticationCredentialsUsers array of authentication users
 	 * @property array $authenticationCredentialsTables array of authentication tables
+	 * @property array $authenticationCredentialsLDAP array of authentication LDAP connections
+	 * @property array $authenticationCredentialsCustom array of custom credential parameters
 	 * @property array $authenticationMemberships array of memberships
 	 * @property array $authenticationMembershipsTables array of membership tables
 	 * @property array $authorizationDeny specifies the roles that are denied access by default
@@ -47,7 +51,8 @@
 	 * @property bool $authorizationRequireSSL specifies whether to require SSL for authentication
 	 * @property array $authorizationPages contains the page authorization configuration
 	 * @property string $dsn dsn connecting string
-	 * @property string $test_dsn testcase dsn connectin string
+	 * @property string $db_username dsn username
+	 * @property string $db_password dsn password
 	 * @property array $errors array of errors
 	 * @property string $root path to root folder
 	 * @property string $htdocs path to htdocs folder
@@ -136,7 +141,7 @@
 		 * specifies the default controller parameter
 		 * @var string
 		 */
-		private $requestParameter				= __PAGE_REQUEST_PARAMETER__;
+		private $requestParameter				= __PATH_REQUEST_PARAMETER__;
 
 		/**
 		 * specifies the re-write URI status
@@ -223,6 +228,12 @@
 		private $authenticationFormsSecret		= 'secret';
 
 		/**
+		 * specifies the inactive time before session expires in seconds
+		 * @var string
+		 */
+		private $authenticationFormsExpires		= 0;
+
+		/**
 		 * specifies the password format for http authentication
 		 * @var string
 		 */
@@ -245,6 +256,18 @@
 		 * @var array
 		 */
 		private $authenticationCredentialsTables	= array();
+
+		/**
+		 * contains an array of user credential LDAP connections
+		 * @var array
+		 */
+		private $authenticationCredentialsLDAP	= array();
+
+		/**
+		 * contains an array of custom credential parameters
+		 * @var array
+		 */
+		private $authenticationCredentialsCustom	= array();
 
 		/**
 		 * contains an array of user memberships
@@ -289,10 +312,16 @@
 		private $dsn							= '';
 
 		/**
-		 * specifies the dsn connection string for the test-source
+		 * specifies the data-source username
 		 * @var string
 		 */
-		private $test_dsn						= '';
+		private $db_username						= '';
+
+		/**
+		 * specifies the data-source password
+		 * @var string
+		 */
+		private $db_password						= '';
 
 		/**
 		 * contains an array of error handling pages
@@ -324,7 +353,10 @@
 			elseif( $field === 'defaultTheme' ) {
 				return $this->defaultTheme;
 			}
-			elseif( $field === 'themes' ) {
+			elseif( $field === 'themesPath' ) {
+				return __HTDOCS_PATH__ . $this->themes;
+			}
+			elseif( $field === 'themesURI' ) {
 				return __APP_URI__ . $this->themes;
 			}
 			elseif( $field === 'viewStateEnabled' ) {
@@ -390,11 +422,20 @@
 			elseif( $field === 'authenticationFormsSecret' ) {
 				return $this->authenticationFormsSecret;
 			}
+			elseif( $field === 'authenticationFormsExpires' ) {
+				return $this->authenticationFormsExpires;
+			}
 			elseif( $field === 'authenticationCredentialsUsers' ) {
 				return $this->authenticationCredentialsUsers;
 			}
 			elseif( $field === 'authenticationCredentialsTables' ) {
 				return $this->authenticationCredentialsTables;
+			}
+			elseif( $field === 'authenticationCredentialsLDAP' ) {
+				return $this->authenticationCredentialsLDAP;
+			}
+			elseif( $field === 'authenticationCredentialsCustom' ) {
+				return $this->authenticationCredentialsCustom;
 			}
 			elseif( $field === 'authenticationMemberships' ) {
 				return $this->authenticationMemberships;
@@ -417,8 +458,11 @@
 			elseif( $field === 'dsn' ) {
 				return $this->dsn;
 			}
-			elseif( $field === 'test_dsn' ) {
-				return $this->test_dsn;
+			elseif( $field === 'db_username' ) {
+				return $this->db_username;
+			}
+			elseif( $field === 'db_password' ) {
+				return $this->db_password;
 			}
 			elseif( $field === 'errors' ) {
 				return $this->errors;
@@ -670,15 +714,15 @@
 						}
 						// authenticationDeny
 						if( isset( $node_data['attributes']['DENY'] )) {
-							$this->authenticationDeny = explode( ',', strtolower( $node_data['attributes']['DENY'] ));
+							$this->authenticationDeny = array_map('trim', explode( ',', strtolower( $node_data['attributes']['DENY'] )));
 						}
 						// authenticationAllow
 						if( isset( $node_data['attributes']['ALLOW'] )) {
-							$this->authenticationAllow = explode( ',', strtolower( $node_data['attributes']['ALLOW'] ));
+							$this->authenticationAllow = array_map('trim', explode( ',', strtolower( $node_data['attributes']['ALLOW'] )));
 						}
 						// authenticationRestrict
 						if( isset( $node_data['attributes']['RESTRICT'] )) {
-							$this->authenticationRestrict = (int)$node_data['attributes']['RESTRICT'];
+							$this->authenticationRestrict = $node_data['attributes']['RESTRICT'];
 						}
 						// authenticationMaxInvalidAttempts
 						if( isset( $node_data['attributes']['MAXINVALIDATTEMPTS'] )) {
@@ -790,6 +834,12 @@
 					if( isset( $node_data['attributes']['DSN'] )) {
 						$this->dsn = $node_data['attributes']['DSN'];
 					}
+					if( isset( $node_data['attributes']['USERNAME'] )) {
+						$this->db_username = $node_data['attributes']['USERNAME'];
+					}
+					if( isset( $node_data['attributes']['PASSWORD'] )) {
+						$this->db_password = $node_data['attributes']['PASSWORD'];
+					}
 
 					$this->_closeNode( $nodes, $index );
 				}
@@ -885,6 +935,10 @@
 					if( isset( $node_data['attributes']['SECRET'] )) {
 						$this->authenticationFormsSecret = $node_data['attributes']['SECRET'];
 					}
+					// authenticationFormsExpires
+					if( isset( $node_data['attributes']['EXPIRES'] )) {
+						$this->authenticationFormsExpires = (int)$node_data['attributes']['EXPIRES'];
+					}
 
 					$this->_closeNode( $nodes, $index );
 				}
@@ -952,7 +1006,7 @@
 						}
 						// restrict
 						if( isset( $node_data['attributes']['RESTRICT'] )) {
-							$page["restrict"] = (int)$node_data['attributes']['RESTRICT'];
+							$page["restrict"] = $node_data['attributes']['RESTRICT'];
 						}
 						// requireSSL
 						if( isset( $node_data['attributes']['REQUIRESSL'] )) {
@@ -1066,6 +1120,103 @@
 						}
 
 						$this->authenticationCredentialsTables[] = $table;
+					}
+
+					$this->_closeNode( $nodes, $index );
+				}
+				// ldap
+				elseif( $node_data['tag'] === 'LDAP' &&
+						$node_data['type'] != 'cdata' &&
+						isset( $node_data['attributes'] ))
+				{
+					if( isset( $node_data['attributes']['HOST'] ))
+					{
+						$ldap = array();
+						$ldap['host']			 = $node_data['attributes']['HOST'];
+
+						if( isset( $node_data['attributes']['DOMAIN'] )) {
+							$ldap['domain'] = $node_data['attributes']['DOMAIN'];
+						}
+						if( isset( $node_data['attributes']['USE-START-TLS'] )) {
+							$ldap['use-start-tls'] = (bool)$node_data['attributes']['USE-START-TLS'];
+						}
+						if( isset( $node_data['attributes']['ACCOUNT-CANONICAL-FORM'] )) {
+							$ldap['account-canonical-form'] = (int)$node_data['attributes']['ACCOUNT-CANONICAL-FORM'];
+						}
+						if( isset( $node_data['attributes']['BASE-DN'] )) {
+							$ldap['base-dn'] = (int)$node_data['attributes']['BASE-DN'];
+						}
+						if( isset( $node_data['attributes']['LDAP-USER'] )) {
+							$ldap['ldap_user'] = $node_data['attributes']['LDAP-USER'];
+						}
+						if( isset( $node_data['attributes']['LDAP-PASSWORD'] )) {
+							$ldap['ldap_password'] = $node_data['attributes']['LDAP-PASSWORD'];
+						}
+						if( isset( $node_data['attributes']['ATTRIBUTES'] )) {
+							$ldap['attributes'] = $node_data['attributes']['ATTRIBUTES'];
+						}
+						if( isset( $node_data['attributes']['TIMELIMIT'] )) {
+							$ldap['timelimit'] = $node_data['attributes']['TIMELIMIT'];
+						}
+
+						$this->authenticationCredentialsLDAP[] = $ldap;
+					}
+
+					$this->_closeNode( $nodes, $index );
+				}
+				// custom
+				elseif( $node_data['tag'] === 'CUSTOM' )
+				{
+					if( $node_data['type'] === 'open' )
+					{
+						$custom = array('name'=>'','class'=>'');
+						$this->_getCustomParametersNodes( $nodes, $index, $custom );
+
+						if( $node_data['type'] != 'cdata' &&
+							isset( $node_data['attributes'] ))
+						{
+							if( isset( $node_data['attributes']['CLASS'] ))
+							{
+								$custom['name'] = $node_data['attributes']['NAME'];
+								$custom['class'] = $node_data['attributes']['CLASS'];
+							}
+						}
+
+						$this->authenticationCredentialsCustom[] = $custom;
+					}
+
+					$this->_closeNode( $nodes, $index );
+				}
+			}
+		}
+
+
+		/**
+		 * get app-setting nodes
+		 *
+		 * @param   array	&$nodes	array of xml nodes
+		 * @param   int		&$index	array index
+		 * @return  void
+		 */
+		private function _getCustomParametersNodes( &$nodes, &$index, &$array )
+		{
+			while( $index < sizeof( $nodes ))
+			{
+				$node_data = $nodes[$index++];
+
+				if( $node_data['type'] === 'close' )
+				{
+					return;
+				}
+				elseif( $node_data['tag'] === 'ADD' &&
+						$node_data['type'] != 'cdata' &&
+						isset( $node_data['attributes'] ))
+				{
+					// error page
+					if( isset( $node_data['attributes']['KEY'] ) &&
+						isset( $node_data['attributes']['VALUE'] ))
+					{
+						$array[$node_data['attributes']['KEY']] = $node_data['attributes']['VALUE'];
 					}
 
 					$this->_closeNode( $nodes, $index );

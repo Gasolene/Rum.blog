@@ -11,8 +11,16 @@
 	/**
 	 * Represents a GridView control
 	 *
-	 * @property bool $ajaxPostBack specifies whether to perform ajax postback on change, Default is false
+	 * @property string $parameter specifies the request parameter
+	 * @property string $pkey specifies the primary key field
 	 * @property bool $escapeOutput Specifies whether to escape the output
+	 * @property bool $readonly Specifies whether control is readonly
+	 * @property bool $disabled Specifies whether the control is disabled
+	 * @property string $tooltip Specifies control tooltip
+	 * @property string $default Specifies default value
+	 * @property bool $disableAutoComplete Specifies whether to disable the browsers auto complete feature
+	 * @property string $placeholder Specifies the text for the placeholder attribute
+	 * @property string $value Specifies the value of control
 	 *
 	 * @package			PHPRum
 	 * @subpackage		Web
@@ -21,22 +29,16 @@
 	abstract class GridViewControlBase extends GridViewColumn
 	{
 		/**
-		 * event request parameter
+		 * request parameter
 		 * @var string
 		 */
 		protected $parameter				= '';
 
 		/**
-		 * primary key
+		 * primary key field
 		 * @var string
 		 */
 		protected $pkey						= '';
-
-		/**
-		 * event request parameter
-		 * @var string
-		 */
-		protected $ajaxPostBack				= false;
 
 		/**
 		 * determines whether to escape the output
@@ -45,22 +47,58 @@
 		protected $escapeOutput				= true;
 
 		/**
-		 * params
+		 * Specifies whether the control is readonly, Default is false
+		 * @var bool
+		 */
+		protected $readonly					= false;
+
+		/**
+		 * Specifies whether the control is disabled, Default is false
+		 * @var bool
+		 */
+		protected $disabled					= false;
+
+		/**
+		 * specifies control tool tip
 		 * @var string
 		 */
-		private $_params					= '';
+		protected $tooltip					= '';
+
+		/**
+		 * specifies default value
+		 * @var string
+		 */
+		protected $default					= '';
+
+		/**
+		 * contains a collection of validators
+		 * @var ValidatorCollection
+		 */
+		protected $validators				= null;
+
+		/**
+		 * Specifies whether to disable the browsers auto complete feature
+		 * @var bool
+		 */
+		protected $disableAutoComplete		= false;
+
+		/**
+		 * Specifies the text for the placeholder attribute
+		 * @var string
+		 */
+		protected $placeholder				= '';
+
+		/**
+		 * Specifies the value of control
+		 * @var string
+		 */
+		protected $value					= null;
 
 		/**
 		 * post back
 		 * @var bool
 		 */
 		private $_handlePostBack			= false;
-
-		/**
-		 * args
-		 * @var array
-		 */
-		private $_args						= array();
 
 
 		/**
@@ -71,34 +109,32 @@
 		 * @param  string		$headerText			header text
 		 * @param  string		$footerText			footer text
 		 * @param  string		$className			css class name
+		 * @param  string		$tooltip			toolstip
+		 * @param  string		$default			default value
 		 * @return void
 		 */
-		public function __construct( $dataField, $pkey, $parameter='', $headerText='', $footerText='', $className='' )
+		public function __construct( $dataField, $pkey, $parameter='', $headerText='', $footerText='', $className='', $tooltip='', $default = '' )
 		{
-			$this->parameter=$parameter?$parameter:str_replace(" ","_",$dataField);
-			$this->pkey = $pkey;
-
 			parent::__construct( $dataField, $headerText, '', $footerText, $className );
 
-			$ajaxPostEvent='on'.ucwords(str_replace(" ","_",$this->parameter)).'AjaxPost';
-			if(\method_exists(\System\Web\WebApplicationBase::getInstance()->requestHandler, $ajaxPostEvent))
-			{
-				$this->ajaxPostBack = true;
-			}
+			$this->parameter = $parameter?$parameter:str_replace(" ","_",$dataField);
+			$this->pkey = $pkey;
+			$this->tooltip = $tooltip;
+			$this->default = $default;
+			$this->validators  = new \System\Validators\ValidatorCollection($this);
 
 			// event handling
-			$this->events->add(new \System\Web\Events\GridViewColumnPostEvent());
-			$this->events->add(new \System\Web\Events\GridViewColumnAjaxPostEvent());
-
 			// default events
 			$postEvent='on'.ucwords(str_replace(" ","_",$this->parameter)).'Post';
+			$ajaxPostEvent='on'.ucwords(str_replace(" ","_",$this->parameter)).'AjaxPost';
+
 			if(\method_exists(\System\Web\WebApplicationBase::getInstance()->requestHandler, $postEvent))
 			{
 				$this->events->registerEventHandler(new \System\Web\Events\GridViewColumnPostEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . $postEvent));
 			}
-
-			if($this->ajaxPostBack)
+			if(\method_exists(\System\Web\WebApplicationBase::getInstance()->requestHandler, $ajaxPostEvent))
 			{
+				$this->ajaxPostBack = true;
 				$this->events->registerEventHandler(new \System\Web\Events\GridViewColumnAjaxPostEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . $ajaxPostEvent));
 			}
 		}
@@ -112,11 +148,35 @@
 		 * @ignore
 		 */
 		public function __get( $field ) {
-			if( $field === 'ajaxPostBack' ) {
-				return $this->ajaxPostBack;
+			if( $field === 'parameter' ) {
+				return $this->parameter;
+			}
+			elseif( $field === 'pkey' ) {
+				return $this->pkey;
 			}
 			elseif( $field === 'escapeOutput' ) {
 				return $this->escapeOutput;
+			}
+			elseif( $field === 'disableAutoComplete' ) {
+				return $this->disableAutoComplete;
+			}
+			elseif( $field === 'placeholder' ) {
+				return $this->placeholder;
+			}
+			elseif( $field === 'readonly' ) {
+				return $this->readonly;
+			}
+			elseif( $field === 'disabled' ) {
+				return $this->disabled;
+			}
+			elseif( $field === 'tooltip' ) {
+				return $this->tooltip;
+			}
+			elseif( $field === 'default' ) {
+				return $this->default;
+			}
+			elseif( $field === 'value' ) {
+				return $this->value;
 			}
 			else {
 				return parent::__get($field);
@@ -133,15 +193,98 @@
 		 * @ignore
 		 */
 		public function __set( $field, $value ) {
-			if( $field === 'ajaxPostBack' ) {
-				$this->ajaxPostBack = (bool)$value;
+			if( $field === 'parameter' ) {
+				$this->parameter = (string)$value;
+			}
+			elseif( $field === 'pkey' ) {
+				$this->pkey = (string)$value;
 			}
 			elseif( $field === 'escapeOutput' ) {
 				$this->escapeOutput = (bool)$value;
 			}
+			elseif( $field === 'disableAutoComplete' ) {
+				$this->disableAutoComplete = (bool)$value;
+			}
+			elseif( $field === 'placeholder' ) {
+				$this->placeholder = (string)$value;
+			}
+			elseif( $field === 'readonly' ) {
+				$this->readonly = (bool)$value;
+			}
+			elseif( $field === 'disabled' ) {
+				$this->disabled = (bool)$value;
+			}
+			elseif( $field === 'tooltip' ) {
+				$this->tooltip = (string)$value;
+			}
+			elseif( $field === 'default' ) {
+				$this->default = (string)$value;
+			}
+			elseif( $field === 'value' ) {
+				$this->value = $value;
+			}
 			else {
 				parent::__set( $field, $value );
 			}
+		}
+
+
+		/**
+		 * adds a validator to the control
+		 *
+		 * @param  ValidatorBase
+		 * @return void
+		 */
+		public function addValidator(\System\Validators\ValidatorBase $validator)
+		{
+			$validator->field = $this->dataField;
+			$this->validators->add($validator);
+		}
+
+
+		/**
+		 * validates control against validators, returns true on success
+		 *
+		 * @param  string		$errMsg		error message
+		 * @return bool						true if control value is valid
+		 */
+		public function validate(&$errMsg = '')
+		{
+			$fail = false;
+			if(!$this->disabled)
+			{
+				foreach($this->validators as $validator)
+				{
+					if($validator instanceof \System\Validators\CompareValidator)
+					{
+						if(!$validator->compare($this->value, $this->gridView->columns->findColumn($validator->fieldToCompare)->value))
+						{
+							$fail = true;
+							if($errMsg) $errMsg .= ", ";
+							$errMsg .= $validator->errorMessage;
+						}
+					}
+					elseif(!$validator->validate($this->value))
+					{
+						$fail = true;
+						if($errMsg) $errMsg .= ", ";
+						$errMsg .= $validator->errorMessage;
+					}
+				}
+			}
+
+			return !$fail;
+		}
+
+
+		/**
+		 * handle load events
+		 *
+		 * @return void
+		 */
+		protected function onLoad()
+		{
+			$this->validators->load();
 		}
 
 
@@ -153,11 +296,12 @@
 		 */
 		public function onRequest( &$request )
 		{
-			if( isset( $request[$this->parameter] ))
+			$parameter = $this->formatParameter($this->parameter);
+			if( isset( $request[$parameter] ))
 			{
+				$this->value = $request[$parameter];
 				$this->_handlePostBack = true;
-				$this->_args = $request;
-				unset( $request[$this->parameter] );
+				unset( $request[$parameter] );
 			}
 		}
 
@@ -172,15 +316,13 @@
 		{
 			if( $this->_handlePostBack )
 			{
-				$args = $request;
-
 				if($this->ajaxPostBack && \Rum::app()->requestHandler->isAjaxPostBack)
 				{
-					$this->events->raise(new \System\Web\Events\GridViewColumnAjaxPostEvent(), $this, $this->_args);
+					$this->events->raise(new \System\Web\Events\GridViewColumnAjaxPostEvent(), $this, \System\Web\HTTPRequest::$post);
 				}
 				else
 				{
-					$this->events->raise(new \System\Web\Events\GridViewColumnPostEvent(), $this, $this->_args);
+					$this->events->raise(new \System\Web\Events\GridViewColumnPostEvent(), $this, \System\Web\HTTPRequest::$post);
 				}
 			}
 		}
@@ -194,8 +336,27 @@
 		 */
 		public function onRender()
 		{
-			$params = $this->getRequestData() . "&{$this->pkey}='.\\rawurlencode(%{$this->pkey}%).'";
-			$this->itemText = $this->getItemText($this->dataField, $this->parameter, $params);
+			$this->itemText = $this->fetchUpdateControl($this->dataField, $this->formatParameter($this->parameter));
+//			$this->footerText = $this->fetchInsertControl($this->dataField, $this->formatParameter($this->parameter));
+		}
+
+
+		/**
+		 * format parameter
+		 * 
+		 * @param string $parameter parameter to format
+		 * @return string
+		 */
+		final protected function formatParameter( $parameter )
+		{
+			$parameter = str_replace( ' ', '_', (string)$parameter );
+			$parameter = str_replace( '\'', '_', $parameter );
+			$parameter = str_replace( '"', '_', $parameter );
+			$parameter = str_replace( '/', '_', $parameter );
+			$parameter = str_replace( '\\', '_', $parameter );
+			$parameter = str_replace( '.', '_', $parameter );
+
+			return $parameter;
 		}
 
 
@@ -218,14 +379,45 @@
 		}
 
 
+		final protected function getAttrs()
+		{
+			$attrs = "name=\"{$this->parameter}\"";
+			if( $this->readonly )
+			{
+				$attrs .= ' readonly="readonly"';
+			}
+
+			if( $this->disabled )
+			{
+				$attrs .= ' disabled="disabled"';
+			}
+
+			if( $this->disableAutoComplete )
+			{
+				$attrs .= ' autocomplete="off"';
+			}
+
+//			if( $this->placeholder )
+//			{
+//				$attrs .= " placeholder=\"{$this->placeholder}\"";
+//			}
+			return $attrs;
+		}
+
+
 		/**
 		 * get item text
 		 *
-		 * @param string $dataField
-		 * @param string $parameter
-		 * @param string $params
 		 * @return string
 		 */
-		abstract protected function getItemText($dataField, $parameter, $params);
+		abstract public function fetchUpdateControl();
+
+
+		/**
+		 * get footer text
+		 *
+		 * @return string
+		 */
+		abstract public function fetchInsertControl();
 	}
 ?>

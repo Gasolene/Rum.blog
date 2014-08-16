@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Logger;
 
@@ -110,7 +110,6 @@
 			$file = $this->path . '/' . $category . '.log';
 
 			$log = fopen( $file, 'ab+' );
-
 			if($log)
 			{
 				if( fwrite( $log, date( 'Y-m-d H:i:s e', time() ) . "\t" . $message . "\n" ))
@@ -119,12 +118,12 @@
 				}
 				else
 				{
-					throw new LoggerException("Could not write to log file `{$file}`");
+					throw new \System\Utils\FileNotWritableException("Could not write to log file `{$file}`, check that directory " . $this->path . " is writable");
 				}
 			}
 			else
 			{
-				throw new LoggerException("Could not open file `{$file}` for output");
+				throw new \System\Utils\FileNotWritableException("Could not write to log file `{$file}`, check that directory " . $this->path . " is writable");
 			}
 		}
 

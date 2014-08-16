@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Logger;
 
@@ -69,7 +69,7 @@
 				$this->db->queryBuilder()
 					->insertInto($this->table, array('datetime', 'message', 'category'))
 					->values(array(date('Y-m-d g:ia'), $message, $category))
-					->runQuery();
+					->execute();
 			}
 			catch(\System\DB\DatabaseException $e)
 			{
@@ -81,7 +81,6 @@
 						'name' => 'datetime',
 						'table' => $this->table,
 						'type' => 'DATETIME',
-						'primaryKey' => true,
 						'length' => 30,
 						'notNull' => true,
 						'datetime' => true)),
@@ -103,7 +102,7 @@
 				$this->db->queryBuilder()
 					->insertInto($this->table, array('datetime', 'message', 'category'))
 					->values(array(date('Y-m-d g:ia'), $message, $category))
-					->runQuery();
+					->execute();
 			}
 		}
 
@@ -136,7 +135,7 @@
 				->delete()
 				->from($this->table)
 				->where($this->table, 'category', '=', $category)
-				->runQuery();
+				->execute();
 		}
 	}
 ?>

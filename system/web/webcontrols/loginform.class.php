@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -11,6 +11,18 @@
 	/**
 	 * Represents a LoginForm
 	 *
+	 * @property string $loginFormTitle Specifies the login form title
+	 * @property string $usernameLabelText Specifies the username label text
+	 * @property string $passwordLabelText Specifies the password label text
+	 * @property string $rememberMeLabelText Specifies the remember me label text
+	 * @property string $forgotPasswordLinkLabelText Specifies the forgot password hyperlink text
+	 * @property string $loginButtonLabelText Specifies the login button text
+	 * @property string $forgotPasswordFormTitle Specifies the forgot password form title
+	 * @property string $emailAddressLabelText Specifies the email address label text
+	 * @property string $resetButtonLabelText Specifies the reset button text
+	 * @property string $resetPasswordFormTitle Specifies the reset form title
+	 * @property string $newPasswordLabelText Specifies the new password label text
+	 * @property string $confirmPasswordLabelText Specifies the confirm password label text
 	 * @property string $invalidCredentialsMsg Specifies the message when login failed
 	 * @property string $disabledMsg Specifies the message when account is disabled
 	 * @property string $lockoutMsg Specifies the message when account is locked out
@@ -20,10 +32,13 @@
 	 * @property string $successMsg Specifies the success message
 	 * @property string $emailFromAddress Specifies the from address of the email message
 	 * @property string $emailSubject Specifies the subject line of the email message
+	 * @property string $emailBody Specifies the body of the email message with template variables {username}, {url}
 	 * @property IMailClient $mailClient Specifies the mail client to send the message with
-	 * @property TextBox $username username control
-	 * @property TextBox $password password control
-	 * @property TextBox $new_password new password control when reseting password
+	 * @property string $username username textbox
+	 * @property Password $password password textbox
+	 * @property Checkbox $permenant permenant checkbox
+	 * @property Hyperlink $forgot_password forgot password link
+	 * @property Button $login login button
 	 *
 	 * @package			PHPRum
 	 * @subpackage		Web
@@ -31,6 +46,78 @@
 	 */
 	class LoginForm extends Form
 	{
+		/**
+		 * Specifies the login form title
+		 * @var string
+		 */
+		protected $loginFormTitle				= "Login";
+
+		/**
+		 * Specifies the username label text
+		 * @var string
+		 */
+		protected $usernameLabelText			= "Username";
+
+		/**
+		 * Specifies the password label text
+		 * @var string
+		 */
+		protected $passwordLabelText			= "Password";
+
+		/**
+		 * Specifies the remember me label text
+		 * @var string
+		 */
+		protected $rememberMeLabelText			= "Remember me?";
+
+		/**
+		 * Specifies the forgot password hyperlink label text
+		 * @var string
+		 */
+		protected $forgotPasswordLinkLabelText	= "Forgot password";
+
+		/**
+		 * Specifies the login button text
+		 * @var string
+		 */
+		protected $loginButtonLabelText			= "Login";
+
+		/**
+		 * Specifies the forgot password form title
+		 * @var string
+		 */
+		protected $forgotPasswordFormTitle		= "Reset password";
+
+		/**
+		 ** Specifies the email address label text
+		 * @var string
+		 */
+		protected $emailAddressLabelText		= "E-Mail address";
+
+		/**
+		 ** Specifies the reset button text
+		 * @var string
+		 */
+		protected $resetButtonLabelText			= "Reset";
+
+		/**
+		 * Specifies the reset button text
+		 * @var string
+		 */
+		protected $resetPasswordFormTitle		= "Please enter your new password";
+
+		/**
+		 ** Specifies the new password label text
+		 * @var string
+		 */
+		protected $newPasswordLabelText			= "New password";
+
+		/**
+		 ** Specifies the confirm password label text
+		 * @var string
+		 */
+		protected $confirmPasswordLabelText		= "Confirm password";
+
 		/**
 		 * specifies the message when login failed
 		 * @var string
@@ -74,6 +161,18 @@
 		protected $successMsg					= 'You have successfully logged in';
 
 		/**
+		 * specifies the password validation message
+		 * @var string
+		 */
+		protected $passwordValidationMsg		= 'Password must contain at least 6 characters with at least 1 numeric character';
+
+		/**
+		 * specifies the passwords must match validation message
+		 * @var string
+		 */
+		protected $passwordsMustMatchValidationMsg		= 'Passwords must match';
+
+		/**
 		 * Specifies the from address when email is sent
 		 * @var string
 		 */
@@ -84,6 +183,18 @@
 		 * @var string
 		 */
 		protected $emailSubject					= 'Password reset confirmation';
+
+		/**
+		 * Specifies the body when email is sent
+		 * @var string
+		 */
+		protected $emailBody					= "<p>Hi {username},</p>
+<p>You recently requested a new password.</p>
+<p>Please click the link below to complete your new password request:<br />
+<a href=\"{url}\">{url}</a>
+</p>
+<p>The link will remain active for one hour.</p>
+<p>If you did not authorize this request, please ignore this email.</p>";
 
 		/**
 		 * Specifies the mail client for sending
@@ -103,7 +214,16 @@
 		{
 			parent::__construct( $controlId );
 
-			if( \System\Web\WebApplicationBase::getInstance()->config->authenticationRequireSSL && \System\Web\WebApplicationBase::getInstance()->config->protocol <> 'https' && !isset($GLOBALS["__DISABLE_HEADER_REDIRECTS__"]))
+			// event handling
+			$this->events->add(new \System\Web\Events\LoginFormSubmitEvent());
+
+			$onPostMethod = 'on' . ucwords( $this->controlId ) . 'Submit';
+			if(\method_exists(\System\Web\WebApplicationBase::getInstance()->requestHandler, $onPostMethod))
+			{
+				$this->events->registerEventHandler(new \System\Web\Events\LoginFormSubmitEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . $onPostMethod));
+			}
+
+			if( \Rum::config()->authenticationRequireSSL && \Rum::config()->protocol <> 'https' && !isset($GLOBALS["__DISABLE_HEADER_REDIRECTS__"]))
 			{
 				// redirect to secure server (forward session)
 				$url = 'https://' . __NAME__ . (__SSL_PORT__<>443?':'.__SSL_PORT__:'') . \System\Web\WebApplicationBase::getInstance()->getPageURI('', array( \System\Web\WebApplicationBase::getInstance()->session->sessionName => \System\Web\WebApplicationBase::getInstance()->session->sessionId ));
@@ -162,6 +282,10 @@
 			elseif( $field === 'emailSubject' )
 			{
 				$this->emailSubject = (string)$value;
+			}
+			elseif( $field === 'emailBody' )
+			{
+				$this->emailBody = (string)$value;
 			}
 			elseif( $field === 'mailClient' )
 			{
@@ -226,21 +350,33 @@
 			{
 				return $this->emailSubject;
 			}
+			elseif( $field === 'emailBody' )
+			{
+				return $this->emailBody;
+			}
 			elseif( $field === 'mailClient' )
 			{
 				return $this->mailClient;
 			}
 			elseif( $field === 'username' )
 			{
-				return $this->getControl('username');
+				return $this->findControl('username');
 			}
 			elseif( $field === 'password' )
 			{
-				return $this->getControl('password');
+				return $this->findControl('password');
 			}
-			elseif( $field === 'new_password' )
+			elseif( $field === 'forgot_password' )
 			{
-				return $this->getControl('new_password');
+				return $this->findControl('forgot_password');
+			}
+			elseif( $field === 'permanent' )
+			{
+				return $this->findControl('permanent');
+			}
+			elseif( $field === 'login' )
+			{
+				return $this->findControl('login');
 			}
 			else
 			{
@@ -258,45 +394,53 @@
 		{
 			parent::onInit();
 
-			$this->legend = "Login";
-			$this->add( new TextBox( 'username' ));
-			$this->add( new TextBox( 'password' ));
-			$this->add( new CheckBox( 'permanent' ));
-			$this->add( new Button( 'login', 'Login' ));
-			$this->add( new HyperLink( 'forgot_password', 'Forgot password', $this->getQueryString('?forgot_password=true') ));
+			$request =& \System\Web\HTTPRequest::$request;
 
-			$this->add( new TextBox( 'email' ));
-			$this->add( new Button( 'send_email', 'Reset password' ));
+			if( isset( $request[$this->controlId . "_reset"] ) && isset( $request["e"] ) && isset( $request["t"] ))
+			{
+				// Show reset password form
+				$this->legend = $this->resetPasswordFormTitle;
+				$this->add(new Password('username'));
+				$this->add(new Password('password'));
+				$this->add(new Button('login', $this->resetButtonLabelText));
 
-			$this->add( new TextBox( 'new_password' ));
-			$this->add( new TextBox( 'confirm_password' ));
-			$this->add( new Button( 'reset_password', 'Reset password' ));
+				$this->getControl('username')->label = $this->newPasswordLabelText;
+				$this->getControl('password')->label = $this->confirmPasswordLabelText;
+				$this->getControl('username')->placeholder = $this->newPasswordLabelText;
+				$this->getControl('password')->placeholder = $this->confirmPasswordLabelText;
 
-			$this->getControl( 'username' )->label = 'User name';
-			$this->getControl( 'password' )->label = 'Password';
-			$this->getControl( 'password' )->mask = true;
-			$this->getControl( 'password' )->enableViewState = false;
-			$this->getControl( 'permanent' )->label = 'Remember me';
-			$this->getControl( 'forgot_password' )->visible = false;
+				$this->getControl('username')->addValidator(new \System\Validators\RequiredValidator());
+				$this->getControl('username')->addValidator(new \System\Validators\CompareValidator('password', '==', $this->passwordsMustMatchValidationMsg));
+				$this->getControl('username')->addValidator(new \System\Validators\PatternValidator('^(?=.*\d).{6,16}$^', $this->passwordValidationMsg));
+			}
+			elseif( isset( $request["forgot_password"] ))
+			{
+				// Show password request email form
+				$this->legend = $this->forgotPasswordFormTitle;
+				$this->add(new Email('username'));
+				$this->add(new Button('login', $this->resetButtonLabelText));
 
-			$this->getControl( 'email' )->visible = false;
-			$this->getControl( 'email' )->enableViewState = false;
-			$this->getControl( 'email' )->label = 'Email address';
-			$this->getControl( 'send_email' )->visible = false;
+				$this->getControl('username')->label = $this->emailAddressLabelText;
+				$this->getControl('username')->placeholder = $this->emailAddressLabelText;
 
-			$this->getControl( 'new_password' )->visible = false;
-			$this->getControl( 'new_password' )->mask = true;
-			$this->getControl( 'new_password' )->enableViewState = false;
-			$this->getControl( 'new_password' )->label = 'New password';
-			$this->getControl( 'confirm_password' )->visible = false;
-			$this->getControl( 'confirm_password' )->mask = true;
-			$this->getControl( 'confirm_password' )->enableViewState = false;
-			$this->getControl( 'confirm_password' )->label = 'Confirm your password';
-			$this->getControl( 'reset_password' )->visible = false;
+				$this->getControl('username')->addValidator(new \System\Validators\EmailValidator());
+			}
+			else
+			{
+				// Show login form
+				$this->legend = $this->loginFormTitle;
+				$this->add(new Text('username'));
+				$this->add(new Password('password'));
+				$this->add(new CheckBox('permanent'));
+				$this->add(new Button('login', $this->loginButtonLabelText));
+				$this->add(new HyperLink('forgot_password', $this->forgotPasswordLinkLabelText, $this->getQueryString('forgot_password=true')));
 
-			$this->new_password->addValidator(new \System\Validators\RequiredValidator());
-			$this->new_password->addValidator(new \System\Validators\MatchValidator($this->confirm_password, "Your passwords must match"));
-			$this->new_password->addValidator(new \System\Validators\PatternValidator('^(?=.*\d).{6,16}$^', $this->new_password->label . ' must contain 6 to 16 characters with at least one numeric digit'));
+				$this->getControl('username')->label = $this->usernameLabelText;
+				$this->getControl('password')->label = $this->passwordLabelText;
+				$this->getControl('permanent')->label = $this->rememberMeLabelText;
+				$this->getControl('username')->placeholder = $this->usernameLabelText;
+				$this->getControl('password')->placeholder = $this->passwordLabelText;
+			}
 		}
 
 
@@ -310,100 +454,8 @@
 		{
 			$app = \System\Web\WebApplicationBase::getInstance();
 
-			foreach($app->config->authenticationCredentialsTables as $table)
+			if( isset( $request[$this->controlId . "_reset"] ) && isset( $request["e"] ) && isset( $request["t"] ))
 			{
-				if(isset($table["emailaddress-field"]))
-				{
-					$this->forgot_password->visible = true;
-				}
-			}
-
-			if( $this->login->submitted )
-			{
-				// Authenticate User based on credentials
-				$auth = \System\Security\Authentication::authenticate( $this->getControl( 'username' )->value, $this->getControl( 'password' )->value );
-				if( $auth->authenticated() )
-				{
-					// Set Auth Cookie
-					\System\Security\FormsAuthentication::redirectFromLoginPage( $this->getControl( 'username' )->value, $this->getControl( 'permanent' )->value );
-				}
-				elseif( $auth->disabled() )
-				{
-					// Account disabled
-					$app->messages->add( new \System\Base\AppMessage( $this->disabledMsg, \System\Base\AppMessageType::Fail() )) ;
-				}
-				elseif( $auth->lockedOut() )
-				{
-					// Account locked out
-					$app->messages->add( new \System\Base\AppMessage( $this->lockoutMsg, \System\Base\AppMessageType::Fail() )) ;
-				}
-				else
-				{
-					// Invalid credentials
-					$app->messages->add( new \System\Base\AppMessage( $this->invalidCredentialsMsg, \System\Base\AppMessageType::Fail() )) ;
-				}
-			}
-			elseif( isset( $request["forgot_password"] ) || $this->send_email->submitted )
-			{
-				// Show password request email form
-				$this->legend = "Reset password";
-				$this->getControl( 'username' )->visible = false;
-				$this->getControl( 'password' )->visible = false;
-				$this->getControl( 'permanent' )->visible = false;
-				$this->getControl( 'login' )->visible = false;
-				$this->getControl( 'login' )->disabled = true;
-				$this->getControl( 'forgot_password' )->visible = false;
-				$this->getControl( 'forgot_password' )->disabled = true;
-
-				$this->getControl( 'email' )->visible = true;
-				$this->getControl( 'send_email' )->visible = true;
-
-				if( $this->send_email->submitted )
-				{
-					// Send password request email
-					$found = false;
-					foreach($app->config->authenticationCredentialsTables as $table)
-					{
-						if( isset( $table['dsn'] )) {
-							$ds = \System\DB\DataAdapter::create( $table['dsn'] )->openDataSet( $table['source'] );
-						}
-						else {
-							$ds = $app->dataAdapter->openDataSet( $table['source'] );
-						}
-
-						if( $ds->seek( $table['emailaddress-field'], $this->email->value ))
-						{
-							$found = true;
-							$url = __PROTOCOL__ . '://' . __HOST__ . $app->getPageURI( $app->config->authenticationFormsLoginPage, array($this->controlId.'_reset'=>$ds[$table['emailaddress-field']], 'e'=>md5($ds[$table['username-field']].$ds[$table['password-field']].time()), 't'=>time()) );
-
-							$mailMessage = new \System\Comm\Mail\MailMessage();
-							$mailMessage->to = $ds[$table["emailaddress-field"]];
-							if($this->emailFromAddress)$mailMessage->from = $this->emailFromAddress;
-							$mailMessage->subject = $this->emailSubject;
-							$mailMessage->body = "<p>Hi {$ds[$table["username-field"]]},</p>
-<p>You recently requested a new password.</p>
-<p>Please click the link below to complete your new password request:<br />
-<a href=\"{$url}\">{$url}</a>
-</p>
-<p>The link will remain active for one hour.</p>
-<p>If you did not authorize this request, please ignore this email.</p>";
-
-							$this->mailClient->send($mailMessage);
-							$app->messages->add(new \System\Base\AppMessage($this->passwordResetSentMsg, \System\Base\AppMessageType::Info()));
-							$app->setForwardPage($app->config->authenticationFormsLoginPage);
-						}
-					}
-
-					// No email address found
-					if(!$found)
-					{
-						$app->messages->add(new \System\Base\AppMessage($this->emailNotFoundMsg, \System\Base\AppMessageType::Warning()));
-					}
-				}
-			}
-			elseif( isset( $request[$this->controlId . "_reset"] ) && isset( $request["e"] ) && isset( $request["t"] ))
-			{
-				// show reset password form
 				foreach($app->config->authenticationCredentialsTables as $table)
 				{
 					$credential = new \System\Security\TableCredential($table);
@@ -423,10 +475,10 @@
 
 						if($hash === $e && $t > time() - 3600)
 						{
-							if( $this->reset_password->submitted  )
+							if( $this->login->submitted )
 							{
 								// Reset password
-								if($this->new_password->validate($errMsg))
+								if($this->username->validate($errMsg))
 								{
 									$salt = '';
 									if(isset($table["salt-field"]))
@@ -434,7 +486,7 @@
 										$salt = \System\Security\Authentication::generateSalt();
 										$ds[$table["salt-field"]] = $salt;
 									}
-									$ds[$table["password-field"]] = $credential->generateHash($this->new_password->value, $salt);
+									$ds[$table["password-field"]] = $credential->generateHash($this->username->value, $salt);
 									$ds->update();
 
 									$app->messages->add(new \System\Base\AppMessage($this->passwordResetMsg, \System\Base\AppMessageType::Success()));
@@ -446,29 +498,92 @@
 									$app->messages->add(new \System\Base\AppMessage($errMsg, \System\Base\AppMessageType::Fail()));
 								}
 							}
-
-							$this->legend = "Please enter your new password";
-							$this->getControl( 'username' )->visible = false;
-							$this->getControl( 'password' )->visible = false;
-							$this->getControl( 'permanent' )->visible = false;
-							$this->getControl( 'login' )->visible = false;
-							$this->getControl( 'login' )->disabled = true;
-							$this->getControl( 'forgot_password' )->visible = false;
-							$this->getControl( 'forgot_password' )->disabled = true;
-
-							$this->getControl( 'new_password' )->visible = true;
-							$this->getControl( 'confirm_password' )->visible = true;
-							$this->getControl( 'reset_password' )->visible = true;
 						}
 						else
 						{
 							$app->messages->add(new \System\Base\AppMessage("The URL is invalid", \System\Base\AppMessageType::Fail()));
+							$app->setForwardPage($app->config->authenticationFormsLoginPage);
 						}
 					}
 					else
 					{
 						$app->messages->add(new \System\Base\AppMessage($this->emailNotFoundMsg, \System\Base\AppMessageType::Notice()));
 					}
+				}
+			}
+			elseif( isset( $request["forgot_password"] ))
+			{
+				if( $this->login->submitted )
+				{
+					// Send password request email
+					$found = false;
+					foreach($app->config->authenticationCredentialsTables as $table)
+					{
+						if( isset( $table['dsn'] )) {
+							$ds = \System\DB\DataAdapter::create( $table['dsn'] )->openDataSet( $table['source'] );
+						}
+						else {
+							$ds = $app->dataAdapter->openDataSet( $table['source'] );
+						}
+
+						if( $ds->seek( $table['emailaddress-field'], $this->username->value, 1 ))
+						{
+							$found = true;
+							$url = __PROTOCOL__ . '://' . __HOST__ . $app->getPageURI( $app->config->authenticationFormsLoginPage, array($this->controlId.'_reset'=>$ds[$table['emailaddress-field']], 'e'=>md5($ds[$table['username-field']].$ds[$table['password-field']].time()), 't'=>time()) );
+
+							$mailMessage = new \System\Comm\Mail\MailMessage();
+							$mailMessage->to = $ds[$table["emailaddress-field"]];
+							if($this->emailFromAddress)$mailMessage->from = $this->emailFromAddress;
+							$mailMessage->subject = $this->emailSubject;
+							$mailMessage->body = 
+								str_replace('{username}', $ds[$table["username-field"]], 
+								str_replace('{url}', $url, $this->emailBody));
+
+							$this->mailClient->send($mailMessage);
+							$app->messages->add(new \System\Base\AppMessage($this->passwordResetSentMsg, \System\Base\AppMessageType::Info()));
+							$app->setForwardPage($app->config->authenticationFormsLoginPage);
+						}
+					}
+
+					// No email address found
+					if(!$found)
+					{
+						$app->messages->add(new \System\Base\AppMessage($this->emailNotFoundMsg, \System\Base\AppMessageType::Warning()));
+					}
+				}
+			}
+			elseif( $this->login->submitted )
+			{
+				// Authenticate User based on credentials
+				$auth = \System\Security\Authentication::authenticate( $this->getControl( 'username' )->value, $this->getControl( 'password' )->value );
+
+				$authenticated = $auth->authenticated();
+				$disabled = $auth->disabled();
+				$lockedOut = $auth->lockedOut();
+				$this->events->raise(new \System\Web\Events\LoginFormSubmitEvent(), $this, array(
+																			'authenticated'=>$authenticated
+																			, 'disabled' => $disabled
+																			, 'lockedOut' => $lockedOut));
+
+				if( $authenticated )
+				{
+					// Set Auth Cookie
+					\System\Security\FormsAuthentication::redirectFromLoginPage( $this->getControl( 'username' )->value, $this->getControl( 'permanent' )->value );
+				}
+				elseif( $disabled )
+				{
+					// Account disabled
+					$app->messages->add( new \System\Base\AppMessage( $this->disabledMsg, \System\Base\AppMessageType::Fail() )) ;
+				}
+				elseif( $lockedOut )
+				{
+					// Account locked out
+					$app->messages->add( new \System\Base\AppMessage( $this->lockoutMsg, \System\Base\AppMessageType::Fail() )) ;
+				}
+				else
+				{
+					// Invalid credentials
+					$app->messages->add( new \System\Base\AppMessage( $this->invalidCredentialsMsg, \System\Base\AppMessageType::Fail() )) ;
 				}
 			}
 
@@ -484,26 +599,22 @@
 		public function getDomObject()
 		{
 			$form = $this->getFormDomObject();
-			$form->appendAttribute( 'class', ' loginform' );
 			$fieldset = new \System\XML\DomObject('fieldset');
 			$legend = new \System\XML\DomObject('legend');
 			$legend->innerHtml = '<span>' . $this->legend . '</span>';
 			$fieldset->addChild($legend);
 			$dl = new \System\XML\DomObject('dl');
 
-			if($this->username->visible)
-			{
-				$dt = new \System\XML\DomObject('dt');
-				$dd = new \System\XML\DomObject('dd');
-				$label = new \System\XML\DomObject('label');
-				$label->nodeValue = $this->username->label;
-				$dt->addChild($label);
-				$dd->addChild($this->username->getDomObject());
-				$dl->addChild($dt);
-				$dl->addChild($dd);
-			}
+			$dt = new \System\XML\DomObject('dt');
+			$dd = new \System\XML\DomObject('dd');
+			$label = new \System\XML\DomObject('label');
+			$label->nodeValue = $this->username->label;
+			$dt->addChild($label);
+			$dd->addChild($this->username->getDomObject());
+			$dl->addChild($dt);
+			$dl->addChild($dd);
 
-			if($this->password->visible)
+			if($this->findControl('password'))
 			{
 				$dt = new \System\XML\DomObject('dt');
 				$dd = new \System\XML\DomObject('dd');
@@ -511,12 +622,15 @@
 				$label->nodeValue = $this->password->label;
 				$dt->addChild($label);
 				$dd->addChild($this->password->getDomObject());
-				$dd->addChild($this->forgot_password->getDomObject());
+				if($this->findControl('forgot_password'))
+				{
+					$dd->addChild($this->forgot_password->getDomObject());
+				}
 				$dl->addChild($dt);
 				$dl->addChild($dd);
 			}
 
-			if($this->permanent->visible)
+			if($this->findControl('permanent'))
 			{
 				$dt = new \System\XML\DomObject('dt');
 				$dd = new \System\XML\DomObject('dd');
@@ -528,58 +642,16 @@
 				$dl->addChild($dd);
 			}
 
-			if($this->email->visible)
-			{
-				$dt = new \System\XML\DomObject('dt');
-				$dd = new \System\XML\DomObject('dd');
-				$label = new \System\XML\DomObject('label');
-				$label->nodeValue = $this->email->label;
-				$dt->addChild($label);
-				$dd->addChild($this->email->getDomObject());
-				$dl->addChild($dt);
-				$dl->addChild($dd);
-			}
-
-			if($this->new_password->visible)
-			{
-				$dt = new \System\XML\DomObject('dt');
-				$dd = new \System\XML\DomObject('dd');
-				$label = new \System\XML\DomObject('label');
-				$label->nodeValue = $this->new_password->label;
-				$dt->addChild($label);
-				$dd->addChild($this->new_password->getDomObject());
-				$dl->addChild($dt);
-				$dl->addChild($dd);
-			}
-
-			if($this->confirm_password->visible)
-			{
-				$dt = new \System\XML\DomObject('dt');
-				$dd = new \System\XML\DomObject('dd');
-				$label = new \System\XML\DomObject('label');
-				$label->nodeValue = $this->confirm_password->label;
-				$dt->addChild($label);
-				$dd->addChild($this->confirm_password->getDomObject());
-				$dl->addChild($dt);
-				$dl->addChild($dd);
-			}
+			$dt = new \System\XML\DomObject('dt');
+			$dd = new \System\XML\DomObject('dd');
+			$dd->addChild($this->login->getDomObject());
+			$dl->addChild($dt);
+			$dl->addChild($dd);
 
 			$fieldset->addChild($dl);
-
-			$div = new \System\XML\DomObject('div');
-			$div->setAttribute('class', 'buttons');
-			$div->addChild($this->login->getDomObject());
-			$div->addChild($this->send_email->getDomObject());
-			$div->addChild($this->reset_password->getDomObject());
-
 			$form->innerHtml .= $fieldset->fetch();
-			$form->innerHtml .= $div->fetch();
 
 			return $form;
-
-			$dom = parent::getDomObject();
-			$dom->appendAttribute( 'class', ' loginform' );
-			return $dom;
 		}
 	}
 ?>

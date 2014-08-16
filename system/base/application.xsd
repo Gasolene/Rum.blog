@@ -11,7 +11,7 @@
       <xs:element ref="session" minOccurs="0" maxOccurs="1"/>
       <xs:element ref="cache" minOccurs="0" maxOccurs="1"/>
       <xs:element ref="authentication" minOccurs="0" maxOccurs="1"/>
-	  <xs:element ref="authorization" minOccurs="0" maxOccurs="1"/>
+      <xs:element ref="authorization" minOccurs="0" maxOccurs="1"/>
       <xs:element ref="data-source" minOccurs="0" maxOccurs="1"/>
       <xs:element ref="errors" minOccurs="0" maxOccurs="1"/>
     </xs:all>
@@ -84,6 +84,7 @@
           <xs:attribute name="loginpage" type="xs:string" use="optional" />
           <xs:attribute name="cookiename" type="xs:string" use="optional" />
           <xs:attribute name="secret" type="xs:string" use="optional" />
+          <xs:attribute name="expires" type="xs:int" use="optional" />
         </xs:complexType>
       </xs:element>
       <xs:element name="credentials" minOccurs="0" maxOccurs="1">
@@ -105,12 +106,45 @@
                 <xs:attribute name="username-field" type="xs:string" use="required" />
                 <xs:attribute name="password-field" type="xs:string" use="required" />
                 <xs:attribute name="emailaddress-field" type="xs:string" use="optional" />
-				<xs:attribute name="active-field" type="xs:string" use="optional" />
-				<xs:attribute name="failedattemptcount-field" type="xs:string" use="optional" />
-				<xs:attribute name="attemptwindowexpires-field" type="xs:string" use="optional" />
+                <xs:attribute name="active-field" type="xs:string" use="optional" />
+                <xs:attribute name="failedattemptcount-field" type="xs:string" use="optional" />
+                <xs:attribute name="attemptwindowexpires-field" type="xs:string" use="optional" />
                 <xs:attribute name="salt-field" type="xs:string" use="optional" />
                 <xs:attribute name="salt" type="xs:string" use="optional" />
                 <xs:attribute name="password-format" type="authenticationPasswordFormatType" use="optional" />
+              </xs:complexType>
+            </xs:element>
+            <xs:element name="ldap" minOccurs="0" maxOccurs="100">
+              <xs:complexType>
+                <xs:attribute name="host" type="xs:string" use="required" />
+                <xs:attribute name="domain" type="xs:string" use="optional" />
+                <xs:attribute name="use-start-tls" type="xs:boolean" use="optional" />
+                <xs:attribute name="account-canonical-form" type="xs:integer" use="optional" />
+                <xs:attribute name="base-dn" type="xs:string" use="optional" />
+                <xs:attribute name="ldap-user" type="xs:string" use="optional" />
+                <xs:attribute name="ldap-password" type="xs:string" use="optional" />
+                <xs:attribute name="attributes" type="xs:string" use="optional" />
+                <xs:attribute name="timelimit" type="xs:integer" use="optional" />
+              </xs:complexType>
+            </xs:element>
+            <xs:element name="custom" minOccurs="0" maxOccurs="100">
+              <xs:complexType>
+                <xs:all>
+                  <xs:element name="parameters">
+                    <xs:complexType>
+                      <xs:choice>
+                        <xs:element name="add" minOccurs="0" maxOccurs="100">
+                          <xs:complexType>
+                            <xs:attribute name="key" type="xs:string" use="required" />
+                            <xs:attribute name="value" type="xs:string" use="required" />
+                          </xs:complexType>
+                        </xs:element>
+                      </xs:choice>
+                    </xs:complexType>
+                  </xs:element>
+                </xs:all>
+                <xs:attribute name="name" type="xs:string" use="required" />
+                <xs:attribute name="class" type="xs:string" use="required" />
               </xs:complexType>
             </xs:element>
           </xs:sequence>
@@ -166,6 +200,8 @@
 <xs:element name="data-source">
   <xs:complexType>
     <xs:attribute name="dsn" type="xs:string" use="required" />
+    <xs:attribute name="username" type="xs:string" use="optional" />
+    <xs:attribute name="password" type="xs:string" use="optional" />
   </xs:complexType>
 </xs:element>
 

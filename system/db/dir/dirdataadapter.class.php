@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\DB\Dir;
 	use \System\DB\DataAdapter;
@@ -23,19 +23,6 @@
 		 * @var resource
 		 */
 		private $link;
-
-
-		/**
-		 * Executes a query procedure on the current connection and return the result
-		 *
-		 * @param  string		$query		sql query
-		 * @param  bool			$buffer		buffer resultset
-		 * @return resource
-		 */
-		protected function query( $query, $buffer )
-		{
-			throw new \System\Base\MethodNotImplementedException();
-		}
 
 
 		/**
@@ -95,6 +82,23 @@
 		public function dropTableSchema( \System\DB\TableSchema &$tableSchema )
 		{
 			throw new \System\Base\MethodNotImplementedException();
+		}
+
+
+		/**
+		 * prepare an SQL statement
+		 * Creates a prepared statement bound to parameters specified by the @symbol
+		 * e.g. SELECT * FROM `table` WHERE user=@user
+		 *
+		 * @param  string	$statement	SQL statement
+		 * @param  array	$parameters	array of parameters to bind
+		 * @return SQLStatement
+		 */
+		public function prepare($statement, array $parameters = array())
+		{
+			$txtStatement = new TextStatement($this, $this->link);
+			$txtStatement->prepare($statement, $parameters);
+			return $txtStatement;
 		}
 
 

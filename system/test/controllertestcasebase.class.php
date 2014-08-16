@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Test;
 
@@ -347,6 +347,7 @@
 			\System\Web\HTTPRequest::$cookie = array();
 
 			foreach( $params as $key => $value ) {
+				$key = str_replace(' ', '_', str_replace('.', '_', $key));
 				$_REQUEST[(string)$key] = $value;
 				if( strtolower( (string)$method ) === 'post' ) {
 					$_POST[(string)$key] = $value;

@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Validators;
 
@@ -11,6 +11,8 @@
 	/**
 	 * Provides basic validation for web controls
 	 *
+	 * @property string $field field name to validate
+	 * @property string $label field label
 	 * @property string $errorMessage error message
 	 *
 	 * @package			PHPRum
@@ -20,17 +22,22 @@
 	abstract class ValidatorBase
 	{
 		/**
+		 * field name to validate
+		 * @var string
+		 */
+		protected $field;
+
+		/**
+		 * field label
+		 * @var string
+		 */
+		protected $label;
+
+		/**
 		 * error message
 		 * @var string
 		 */
 		protected $errorMessage;
-
-
-		/**
-		 * control to validate
-		 * @var InputBase
-		 */
-		protected $controlToValidate;
 
 
 		/**
@@ -55,7 +62,10 @@
 		 * @ignore
 		 */
 		public function __get( $field ) {
-			if( $field === 'errorMessage' ) {
+			if( $field === 'field' ) {
+				return $this->field;
+			}
+			elseif( $field === 'errorMessage' ) {
 				return $this->errorMessage;
 			}
 			else {
@@ -75,7 +85,10 @@
 		 * @ignore
 		 */
 		public function __set( $field, $value ) {
-			if( $field === 'errorMessage' ) {
+			if( $field === 'field' ) {
+				$this->field = (string)$value;
+			}
+			elseif( $field === 'errorMessage' ) {
 				$this->errorMessage = (string)$value;
 			}
 			else {
@@ -85,38 +98,17 @@
 
 
 		/**
-		 * set error message
+		 * called when all controls are loaded
 		 *
-		 * @param  string $errorMessage error message
+		 * @param  array	&$request	request data
 		 * @return void
 		 */
-		public function setErrorMessage($errorMessage)
+		final public function load()
 		{
-			$this->errorMessage = (string)$errorMessage;
-		}
-
-
-		/**
-		 * set control to validate
-		 *
-		 * @param  InputBase $controlToValidate control to validate
-		 * @return void
-		 */
-		final public function setControlToValidate(\System\Web\WebControls\InputBase &$controlToValidate)
-		{
-			$this->controlToValidate =& $controlToValidate;
-
+			// onLoad event
+			$this->label = $this->label?$this->label:ucwords(str_replace('_',' ',$this->field));
 			$this->onLoad();
 		}
-
-
-		/**
-		 * validates the control
-		 *
-		 * @param  InputBase $controlToValidate control to validate
-		 * @return bool
-		 */
-		abstract public function validate();
 
 
 		/**
@@ -125,5 +117,14 @@
 		 * @return void
 		 */
 		protected function onLoad() {}
+
+
+		/**
+		 * validates the passed value
+		 *
+		 * @param  mixed $value value to validate
+		 * @return bool
+		 */
+		abstract public function validate($value);
 	}
 ?>

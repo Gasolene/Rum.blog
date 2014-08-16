@@ -11,8 +11,7 @@
 		 * @param  EventArgs $args Event args
 		 * @return void
 		 */
-		public function onPageCreate($page, $args)
-		{
+		public function onPageCreate($page, $args) {
 			$page->setMaster(new \System\Web\WebControls\MasterView('common'));
 		}
 	}

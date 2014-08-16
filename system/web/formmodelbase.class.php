@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web;
 	use System\Base\ModelBase;
@@ -20,7 +20,7 @@
 	 * @subpackage		Web
 	 * @author			Darnell Shinbine
 	 */
-	abstract class FormModelBase extends ModelBase
+	abstract class FormModelBase extends ModelBase implements \System\Base\IBindable
 	{
 		/**
 		 * Contains an associative array of field names mapped to field types
@@ -39,18 +39,43 @@
 		 * @var array
 		 */
 		static protected $field_mappings = array(
-			'binary' => 'System\Web\WebControls\FileBrowser',
+			'binary' => 'System\Web\WebControls\File',
 			'blob' => 'System\Web\WebControls\TextArea',
 			'boolean' => 'System\Web\WebControls\CheckBox',
-			'date' => 'System\Web\WebControls\DateSelector',
-			'datetime' => 'System\Web\WebControls\DateTimeSelector',
+			'date' => 'System\Web\WebControls\Date',
+			'datetime' => 'System\Web\WebControls\DateTime',
+			'email' => 'System\Web\WebControls\Email',
 			'enum' => 'System\Web\WebControls\DropDownList',
-			'integer' => 'System\Web\WebControls\TextBox',
-			'numeric' => 'System\Web\WebControls\TextBox',
-			'real' => 'System\Web\WebControls\TextBox',
+			'integer' => 'System\Web\WebControls\Text',
+			'numeric' => 'System\Web\WebControls\Text',
+			'real' => 'System\Web\WebControls\Text',
 			'ref' => 'System\Web\WebControls\DropDownList',
-			'string' => 'System\Web\WebControls\TextBox',
-			'time' => 'System\Web\WebControls\TimeSelector'
+			'search' => 'System\Web\WebControls\Search',
+			'string' => 'System\Web\WebControls\Text',
+			'tel' => 'System\Web\WebControls\Tel',
+			'time' => 'System\Web\WebControls\Time'
+		);
+
+		/**
+		 * Contains field mappings
+		 * @var array
+		 */
+		static protected $column_mappings = array(
+			'binary' => 'System\Web\WebControls\GridViewColumn',
+			'blob' => 'System\Web\WebControls\GridViewTextArea',
+			'boolean' => 'System\Web\WebControls\GridViewCheckBox',
+			'date' => 'System\Web\WebControls\GridViewDate',
+			'datetime' => 'System\Web\WebControls\GridViewDateTime',
+			'email' => 'System\Web\WebControls\GridViewEmail',
+			'enum' => 'System\Web\WebControls\GridViewDropDownMenu',
+			'integer' => 'System\Web\WebControls\GridViewText',
+			'numeric' => 'System\Web\WebControls\GridViewText',
+			'real' => 'System\Web\WebControls\GridViewText',
+			'ref' => 'System\Web\WebControls\GridViewDropDownMenu',
+			'search' => 'System\Web\WebControls\GridViewSearch',
+			'string' => 'System\Web\WebControls\GridViewText',
+			'tel' => 'System\Web\WebControls\GridViewTel',
+			'time' => 'System\Web\WebControls\GridViewTime',
 		);
 
 		/**
@@ -59,6 +84,7 @@
 		 */
 		static protected $rule_mappings = array(
 			'boolean' => 'System\Validators\BooleanValidator',
+			'compare' => 'System\Validators\CompareValidator',
 			'datetime' => 'System\Validators\DateTimeValidator',
 			'email' => 'System\Validators\EmailValidator',
 			'enum' => 'System\Validators\EnumValidator',
@@ -66,7 +92,6 @@
 			'filetype' => 'System\Validators\FileTypeValidator',
 			'integer' => 'System\Validators\IntegerValidator',
 			'length' => 'System\Validators\LengthValidator',
-			'match' => 'System\Validators\MatchValidator',
 			'numeric' => 'System\Validators\NumericValidator',
 			'pattern' => 'System\Validators\PatternValidator',
 			'range' => 'System\Validators\RangeValidator',
@@ -79,7 +104,7 @@
 		 * row
 		 * @var array
 		**/
-		private $row			= array();
+		private $row				= array();
 
 
 		/**
@@ -213,14 +238,33 @@
 
 
 		/**
-		 * converts the form model into an array
+		 * returns fields as array
 		 *
 		 * @return array
 		 */
-		public function toArray()
+		public function fields()
 		{
-			return $this->row;
+			return $this->fields;
 		}
+
+
+		/**
+		 * returns count
+		 *
+		 * @return int
+		 */
+		public function count()
+		{
+			return 1;
+		}
+
+
+		/**
+		 * refresh model state
+		 *
+		 * @return void
+		 */
+		abstract public function refresh();
 
 
 		/**
@@ -229,6 +273,17 @@
 		 * @return void
 		 */
 		abstract public function save();
+
+
+		/**
+		 * converts the form model into an array
+		 *
+		 * @return array
+		 */
+		public function toArray()
+		{
+			return $this->row;
+		}
 
 
 		/**
@@ -241,11 +296,11 @@
 		{
 			$type = self::getClass();
 			$model = new $type();
-			$legend = \substr( strrchr( self::getClass(), '\\'), 1 );
+//			$legend = \substr( strrchr( self::getClass(), '\\'), 1 );
 
 			$form = new \System\Web\WebControls\Form( $controlId );
 			$form->add( new \System\Web\WebControls\Fieldset( 'fieldset' ));
-			$form->fieldset->legend = \ucwords( \System\Web\WebApplicationBase::getInstance()->translator->get( $legend, $legend ));
+//			$form->fieldset->legend = \ucwords( \System\Web\WebApplicationBase::getInstance()->translator->get( $legend, $legend ));
 
 			// create controls
 			foreach( $model->fields as $field => $type )
@@ -253,15 +308,13 @@
 				if(isset(self::$field_mappings[$type]))
 				{
 					$form->fieldset->add(new self::$field_mappings[$type]($field));
-					$form->fieldset->getControl( $field )->label = ucwords( \System\Web\WebApplicationBase::getInstance()->translator->get( $field, str_replace( '_', ' ', $field )));
+//					$form->fieldset->getControl( $field )->label = ucwords( \System\Web\WebApplicationBase::getInstance()->translator->get( $field, str_replace( '_', ' ', $field )));
 				}
 				else
 				{
 					throw new \System\Base\InvalidOperationException("No field mapping assigned to `{$type}`");
 				}
 			}
-
-			$form->add( new \System\Web\WebControls\Button('submit'));
 
 			// implement rules
 			foreach( $model->rules as $field => $rules )
@@ -322,7 +375,7 @@
 						eval("\$validator = new {$validator};");
 						if($validator instanceof \System\Validators\ValidatorBase)
 						{
-							$form->fieldset->getControl($field)->validators->add($validator);
+							$form->fieldset->getControl($field)->addValidator($validator);
 						}
 					}
 				}
@@ -342,6 +395,19 @@
 		final static public function registerFieldType($field, $type)
 		{
 			self::$field_mappings[$field] = $type;
+		}
+
+
+		/**
+		 * register new column type
+		 *
+		 * @param  string $field field type
+		 * @param  string $type path to control
+		 * @return void
+		 */
+		final static public function registerColumnType($field, $type)
+		{
+			self::$column_mappings[$field] = $type;
 		}
 
 

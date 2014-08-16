@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\ActiveRecord;
 	use System\Web\FormModelBase;
@@ -44,6 +44,12 @@
 		protected $pkey				= '';
 
 		/**
+		 * Specifies the sort key
+		 * @var string
+		**/
+		protected $sortKey			= '';
+
+		/**
 		 * Specifies table relationships
 		 * @var array
 		**/
@@ -63,6 +69,7 @@
 		 */
 		final protected function __construct()
 		{
+			if(!$this->sortKey) $this->sortKey = $this->pkey;
 			$this->init();
 		}
 
@@ -91,19 +98,8 @@
 
 				if( $index !== false )
 				{
-					if( isset( $type ))
-					{
-						if( strlen( $mapping['type'] ) > strlen( $type ))
-						{
-							$type = $mapping['type'];
-							$pos  = $index;
-						}
-					}
-					else
-					{
-						$type = $mapping['type'];
-						$pos  = $index;
-					}
+					$type = $mapping['type'];
+					$pos  = $index;
 				}
 			}
 
@@ -438,6 +434,19 @@
 
 
 		/**
+		 * discard cahnges
+		 *
+		 * @return void
+		 */
+		final public function refresh()
+		{
+			$this->beforeRetrieve();
+			$this->dataSet->requery();
+			$this->afterRetrieve();
+		}
+
+
+		/**
 		 * update DataAdapter
 		 *
 		 * @return void
@@ -509,11 +518,11 @@
 
 					elseif( $mapping['relationship'] == RelationshipType::HasManyAndBelongsTo()->__toString() )
 					{
-						$this->dataSet->dataAdapter->execute( '
+						$this->dataSet->dataAdapter->prepare( '
 							delete from
 								`' . $mapping['table'] . '`
 							where
-								`' . $mapping['columnKey'] . '` = ' . $this[$mapping['columnKey']] );
+								`' . $mapping['columnKey'] . '` = ' . $this[$mapping['columnKey']] )->execute();
 
 						continue;
 					}
@@ -591,6 +600,7 @@
 		 */
 		static public function findAll( array $args = array() )
 		{
+			trigger_error("ActiveRecord::findAll(args) is deprecated, use ::all instead", E_USER_DEPRECATED);
 			return ActiveRecordBase::findAllByType( self::getClass(), $args );
 		}
 
@@ -625,10 +635,26 @@
 		 * @param  array		$args		associative array of keys and values
 		 * @return DataSet
 		 */
-		static public function all( array $args = array() )
+		static public function all( array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
 		{
-			return ActiveRecordBase::allByType( self::getClass(), $args );
+			return ActiveRecordBase::allByType( self::getClass(), $columns, $filter, $sort_by, $offset, $limit );
 		}
+
+
+		/**
+		 * static method to return a filtered DataSet of this type
+		 * 
+		 * @param  array		$columns	array of column names to return
+		 * @param  array		$filter		associative array of column names and values to filter
+		 * @param  array		$sort_by	array of column names to sort by
+		 * @param  int			$offset		number of records to offset
+		 * @param  int			$limit		resultset limit
+		 * @return DataSet
+		 */
+//		static public function filter( array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
+//		{
+//			return ActiveRecordBase::allByType( self::getClass(), $columns, $filter, $sort_by, $offset, $limit );
+//		}
 
 
 		/**
@@ -644,12 +670,12 @@
 
 
 		/**
-		 * static method to return a count of records of this type
+		 * static method to return a count of the total number of records of this type
 		 *
 		 * @param  array		$args		associative array of keys and values
 		 * @return DataSet
 		 */
-		static public function count( array $args = array() )
+		static public function total( array $args = array() )
 		{
 			return ActiveRecordBase::countByType( self::getClass(), $args );
 		}
@@ -663,31 +689,24 @@
 		 */
 		static public function form( $controlId )
 		{
-			$cache_id = 'form:'.\System\Base\ApplicationBase::getInstance()->currentPage.'_'.$controlId;
 			$activeRecord = self::create();
 
-			$legend = \substr( strrchr( self::getClass(), '\\'), 1 );
-
 			$form = new \System\Web\WebControls\Form( $controlId );
-			$form->add( new \System\Web\WebControls\Fieldset( 'fieldset' ));
-			$form->fieldset->legend = \ucwords( \System\Base\ApplicationBase::getInstance()->translator->get( $legend, $legend ));
-
-			$schema = $activeRecord->dataSet->dataAdapter->getSchema();
 
 			// create controls
 			foreach( $activeRecord->fields as $field => $type )
 			{
 				if(isset(self::$field_mappings[$type]))
 				{
-					$form->fieldset->add(new self::$field_mappings[$type]($field));
+					$form->add(new self::$field_mappings[$type]($field));
 				}
 				else
 				{
 					throw new \System\Base\InvalidOperationException("No field mapping assigned to `{$type}`");
 				}
 
-				$control = $form->fieldset->getControl( $field );
-				$control->label = ucwords( \System\Base\ApplicationBase::getInstance()->translator->get( $field, str_replace( '_', ' ', $field )));
+				$control = $form->getControl( $field );
+//				$control->label = ucwords( \System\Base\ApplicationBase::getInstance()->translator->get( $field, str_replace( '_', ' ', $field )));
 
 				// create references
 				if($type === 'ref')
@@ -699,26 +718,42 @@
 							$mapping['relationship'] == RelationshipType::BelongsTo()->__toString() )
 						{
 							$class = $mapping['type'];
-							$activeRecord2 = $class::create();
 							$ds = $class::all();
-							$label = \substr( strrchr( $mapping['type'], '\\'), 1 );
-							$ftableSchema = $schema->seek($activeRecord2->table);
+//							$label = \substr( strrchr( $mapping['type'], '\\'), 1 );
 
-							foreach( $ftableSchema->columnSchemas as $fcolumnSchema )
-							{
-								if( !$fcolumnSchema->numeric &&
-									!$fcolumnSchema->boolean &&
-									!$fcolumnSchema->blob &&
-									!$fcolumnSchema->primaryKey )
-								{
-									break;
-								}
-							}
-
-							$control->textField = $fcolumnSchema->name;
-							$control->valueField = $mapping["columnRef"];
+							$control->textField = isset($mapping["columnText"])?$mapping["columnText"]:$mapping["columnRef"];
+							$control->valueField = $mapping["columnKey"];
 							$control->dataSource = $ds;
-							$control->label = ucwords( \System\Base\ApplicationBase::getInstance()->translator->get( $label, $label ));
+//							$control->label = ucwords( \System\Base\ApplicationBase::getInstance()->translator->get( $label, $label ));
+
+							continue 2;
+						}
+					}
+				}
+				// create list
+				else if($type === 'enum')
+				{
+					$options = array();
+					foreach( $activeRecord->rules[$field] as $rule )
+					{
+						$type = \strstr($rule, '(', true);
+						if($type === 'enum')
+						{
+							$type = \strstr($rule, '(', true);
+							if(!$type)
+							{
+								$type = $rule;
+							}
+							$params = \strstr($rule, '(');
+							if(!$params)
+							{
+								$params = '()';
+							}
+							eval("\$options = {$params};");
+
+							foreach($options as $key=>$value) {
+								$control->items->add($key, $value);
+							}
 
 							continue 2;
 						}
@@ -750,12 +785,10 @@
 					$form->fieldset->getControl( $mapping['columnRef'] )->dataSource = $ds;
 					$form->fieldset->getControl( $mapping['columnRef'] )->dataBind();
 					$form->fieldset->getControl( $mapping['columnRef'] )->multiple  = true;
-					$form->fieldset->getControl( $mapping['columnRef'] )->label = ucwords( \System\Base\ApplicationBase::getInstance()->translator->get( $label, $label ));
+//					$form->fieldset->getControl( $mapping['columnRef'] )->label = ucwords( \System\Base\ApplicationBase::getInstance()->translator->get( $label, $label ));
 				}
 			}
 			*/
-
-			$form->add( new \System\Web\WebControls\Button('submit'));
 
 			// implement rules
 			foreach( $activeRecord->rules as $field => $rules )
@@ -811,18 +844,250 @@
 
 				foreach( $validators as $validator )
 				{
-					if($form->fieldset->hasControl($field))
+					if($form->hasControl($field))
 					{
 						eval("\$validator = new {$validator};");
 						if($validator instanceof \System\Validators\ValidatorBase)
 						{
-							$form->fieldset->getControl($field)->validators->add($validator);
+							if($validator instanceof \System\Validators\UniqueValidator) {
+								$validator->dataSource = self::all();
+							}
+							$form->getControl($field)->addValidator($validator);
 						}
 					}
 				}
 			}
 
 			return $form;
+		}
+
+
+		/**
+		 * static method to return a GridView object
+		 *
+		 * @param  string		$controlId		form id
+		 * @return GridView
+		 */
+		static public function gridview( $controlId )
+		{
+			$activeRecord = self::create();
+			$class = get_class($activeRecord);
+
+			$gridView = new \System\Web\WebControls\GridView( $controlId );
+
+			// create controls
+			foreach( $activeRecord->fields as $field => $type )
+			{
+				$column = null;
+//				$header = ucwords( \System\Base\ApplicationBase::getInstance()->translator->get( $field, str_replace( '_', ' ', $field )));
+				$param = $field;
+
+				if(isset(self::$field_mappings[$type]))
+				{
+					// create references
+					if($type === 'ref')
+					{
+						$options = array();
+						foreach( $activeRecord->relationships as $mapping )
+						{
+							// belongs_to
+							if( $mapping['columnKey'] === $field &&
+								$mapping['relationship'] == RelationshipType::BelongsTo()->__toString() )
+							{
+								$class = $mapping['type'];
+								$ds = $class::all();
+
+								foreach($ds->rows as $row)
+								{
+									$options[$row[$mapping["columnRef"]]] = $row;
+								}
+
+								break;
+							}
+						}
+
+						$column = new \System\Web\WebControls\GridViewDropDownList($field, $activeRecord->pkey, $options, $param, isset($mapping["columnText"])?$mapping["columnText"]:$mapping["columnRef"]);
+						$column->textField = isset($mapping["columnText"])?$mapping["columnText"]:$mapping["columnRef"];
+						$column->valueField = $mapping["columnRef"];
+						$column->setFilter(new \System\Web\WebControls\GridViewListFilter($options));
+						$column->default = $activeRecord[$field];
+					}
+					// create selection list
+					else if($type === 'enum')
+					{
+						$options = array();
+						foreach( $activeRecord->rules[$field] as $rule )
+						{
+							$type = \strstr($rule, '(', true);
+							if($type === 'enum')
+							{
+								$type = \strstr($rule, '(', true);
+								if(!$type)
+								{
+									$type = $rule;
+								}
+								$params = \strstr($rule, '(');
+								if(!$params)
+								{
+									$params = '()';
+								}
+								eval("\$options = {$params};");
+							}
+						}
+
+						$column = new \System\Web\WebControls\GridViewDropDownList($field, $activeRecord->pkey, $options, $param, $field);
+						$column->setFilter(new \System\Web\WebControls\GridViewListFilter($options));
+						$column->default = $activeRecord[$field];
+					}
+					else if($type === 'date')
+					{
+						$column = new \System\Web\WebControls\GridViewDate($field, $activeRecord->pkey, $param, $field);
+						$column->setFilter(new \System\Web\WebControls\GridViewDateFilter());
+						$column->default = $activeRecord[$field];
+					}
+					else if($type === 'time')
+					{
+						$column = new \System\Web\WebControls\GridViewTime($field, $activeRecord->pkey, $param, $field);
+						$column->setFilter(new \System\Web\WebControls\GridViewTimeFilter());
+						$column->default = $activeRecord[$field];
+					}
+					else if($type === 'datetime')
+					{
+						$column = new \System\Web\WebControls\GridViewDateTime($field, $activeRecord->pkey, $param, $field);
+						$column->setFilter(new \System\Web\WebControls\GridViewDateTimeFilter());
+						$column->default = $activeRecord[$field];
+					}
+					else if($type === 'boolean')
+					{
+						$column = new \System\Web\WebControls\GridViewCheckBox($field, $activeRecord->pkey, $param, $field);
+						$column->setFilter(new \System\Web\WebControls\GridViewBooleanFilter());
+						$column->default = $activeRecord[$field];
+					}
+					else if($type === 'blob')
+					{
+						$column = new \System\Web\WebControls\GridViewTextArea($field, $activeRecord->pkey, $param, $field);
+						$column->setFilter(new \System\Web\WebControls\GridViewStringFilter());
+						$column->default = $activeRecord[$field];
+					}
+					else if($type === 'search')
+					{
+						$column = new \System\Web\WebControls\GridViewSearch($field, $activeRecord->pkey, $param, $field);
+						$column->setFilter(new \System\Web\WebControls\GridViewStringFilter());
+						$column->default = $activeRecord[$field];
+					}
+					else
+					{
+						$column = new \System\Web\WebControls\GridViewText($field, $activeRecord->pkey, $param, $field);
+						$column->setFilter(new \System\Web\WebControls\GridViewStringFilter());
+						$column->default = $activeRecord[$field];
+					}
+
+					// Create the change event
+//					$eventHandler = function ($sender, $args) use ($pkey, $param, $field, $class, $controlId) {
+//
+//						$entity = $class::findById($args[$pkey]);
+//
+//						if($entity)
+//						{
+//							$entity[$field] = $args[$param];
+//							$entity->save();
+//
+//							if(\Rum::app()->requestHandler->isAjaxPostBack)
+//							{
+//								\Rum::app()->requestHandler->page->{$controlId}->refreshDataSource();
+//								\Rum::app()->requestHandler->page->{$controlId}->updateAjax();
+//							}
+//						}
+//						else {
+//							throw new \System\Base\InvalidOperationException("Could not write to entity object");
+//						}
+//					};
+
+					// Bind event handler method to the page controller
+					// \Rum::app()->requestHandler->attachFunction("on{$field}Post", $eventHandler);
+
+					// attach the event to the event listener
+//					$column->events->registerEventHandler(new \System\Web\Events\GridViewColumnPostEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . "on{$field}Post"));
+//					$column->events->registerEventHandler(new \System\Web\Events\GridViewColumnAjaxPostEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . "on{$field}Post"));
+				}
+				else
+				{
+					throw new \System\Base\InvalidOperationException("No field mapping assigned to `{$type}`");
+				}
+
+				$gridView->columns->add($column);
+			}
+
+			// implement rules
+			foreach( $activeRecord->rules as $field => $rules )
+			{
+				$validators = array();
+				if(\is_array($rules))
+				{
+					foreach($rules as $rule)
+					{
+						$type = \strstr($rule, '(', true);
+						if(!$type)
+						{
+							$type = $rule;
+						}
+						$params = \strstr($rule, '(');
+						if(!$params)
+						{
+							$params = '()';
+						}
+
+						if(isset(self::$rule_mappings[$type]))
+						{
+							$validators[] = self::$rule_mappings[$type].$params;
+						}
+						else
+						{
+							throw new \System\Base\InvalidOperationException("No rule mapping assigned to `{$type}`");
+						}
+					}
+				}
+				else
+				{
+					$type = \strstr($rules, '(', true);
+					if(!$type)
+					{
+						$type = $rules;
+					}
+					$params = \strstr($rules, '(');
+					if(!$params)
+					{
+						$params = '()';
+					}
+
+					if(isset(self::$rule_mappings[$type]))
+					{
+						$validators[] = self::$rule_mappings[$type].$params;
+					}
+					else
+					{
+						throw new \System\Base\InvalidOperationException("No rule mapping assigned to `{$type}`");
+					}
+				}
+
+				foreach( $validators as $validator )
+				{
+					if($gridView->findColumn($field))
+					{
+						if(false===eval("\$validatorIntance = new {$validator};"))
+						{
+							throw new \System\Base\InvalidOperationException("Cannot create validator: new {$validator};");
+						}
+
+						if($validatorIntance instanceof \System\Validators\UniqueValidator) {
+							$validatorIntance->dataSource = self::all();
+						}
+						$gridView->findColumn($field)->addValidator($validatorIntance);
+					}
+				}
+			}
+
+			return $gridView;
 		}
 
 
@@ -955,7 +1220,7 @@
 						}
 					}
 				}
-				throw new \System\Base\InvalidOperationException(get_class($activeRecord)." has no relationship to ".get_class($this));
+				throw new \System\Base\InvalidOperationException(get_class($this)." has no relationship to ".get_class($this));
 			}
 			else
 			{
@@ -988,9 +1253,9 @@
 								$query->where( $mapping['table'], $mapping['columnKey'], '=', $this[$this->pkey] );
 								$query->where( $mapping['table'], $mapping['columnRef'], '=', $activeRecord[$activeRecord->pkey] );
 
-								$ds = $this->dataSet->dataAdapter->openDataSet( $query->getQuery() );
+								$dsA = $this->dataSet->dataAdapter->openDataSet( $query );
 
-								if( $ds->count ) {
+								if( $dsA->count ) {
 									throw new \System\Base\InvalidOperationException("association already exists");
 								}
 
@@ -1063,7 +1328,7 @@
 						$query->where( $mapping['table'], $mapping['columnKey'], '=', $this[$this->pkey] );
 						$query->where( $mapping['table'], $mapping['columnRef'], '=', $activeRecord[$activeRecord->pkey] );
 
-						$query->runQuery();
+						$query->execute();
 
 						if($this->dataSet->dataAdapter->getAffectedRows()!=1)
 						{
@@ -1112,7 +1377,7 @@
 						$query->from  ( $mapping['table'] );
 						$query->where ( $mapping['table'], $mapping['columnKey'], '=', $this[$this->pkey] );
 
-						$this->dataSet->dataAdapter->execute( $query->getQuery() );
+						$query->execute();
 						return;
 					}
 					if( $mapping['relationship'] == RelationshipType::HasMany()->__toString() )
@@ -1122,7 +1387,7 @@
 						$query->set   ( $mapping['table'], $mapping['columnRef'], null );
 						$query->where ( $mapping['table'], $mapping['columnRef'], '=', $this[$mapping['columnKey']] );
 
-						$this->dataSet->dataAdapter->execute( $query->getQuery() );
+						$query->execute();
 						return;
 					}
 				}
@@ -1186,7 +1451,7 @@
 						$query->from  ( $mapping['table'] );
 						$query->where ( $mapping['table'], $mapping['columnRef'], '=', $this[$mapping['columnKey']] );
 
-						$this->dataSet->dataAdapter->execute( $query->getQuery() );
+						$query->execute();
 						return;
 					}
 				}
@@ -1424,7 +1689,7 @@
 							$query->leftJoin( $this->table, $mapping['columnKey'], $mapping['table'], $mapping['columnRef'], $joinTable );
 						}
 
-						$query->where( $joinTable, $mapping['columnRef'], '=', $this[$mapping['columnKey']] );
+						$query->where( $joinTable, $mapping['columnKey'], '=', $this[$mapping['columnKey']] );
 
 						return $query->openDataSet();
 					}
@@ -1538,7 +1803,7 @@
 				throw new \System\Base\InvalidOperationException("AppServlet::dataAdapter is null");
 			}
 
-			$activeRecord->dataSet = $da->openDataSet( $query->getQuery() );
+			$activeRecord->dataSet = $query->openDataSet();
 
 			// set args
 			foreach( $args as $key => $value )
@@ -1649,30 +1914,75 @@
 
 		/**
 		 * static method to return a DataSet by type
-		 *
+		 * 
 		 * @param  string		$type		object type
-		 * @param  array		$args		filter
+		 * @param  array		$columns	array of column names to return
+		 * @param  array		$filter		associative array of column names and values to filter
+		 * @param  array		$sort_by	array of column names to sort by
+		 * @param  int			$offset		number of records to offset
+		 * @param  int			$limit		resultset limit
 		 * @return DataSet
 		 */
-		static private function allByType( $type, array $args = array() )
+		static private function allByType( $type, array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
 		{
+			// TODO: rem backwards compatibility code
+			if((bool)count(array_filter(array_keys($columns), 'is_string')) && !$filter && !$sort_by && !$offset && ~$limit) {
+				$filter = $columns;
+				$columns = array();
+			}
+
 			$activeRecord = new $type();
 
 			// build query
-			$query = \System\Base\ApplicationBase::getInstance()->dataAdapter->queryBuilder()
-			->select( '*' )
-			->from( $activeRecord->table );
+			$query = \System\Base\ApplicationBase::getInstance()->dataAdapter->queryBuilder()->select();
+
+			// columns
+			foreach( $columns as $column )
+			{
+				$field = explode('.', $column);
+				if(count($field)==2) {
+					$query->column( $field[0], $field[1] );
+				}
+				else {
+					$query->column( $activeRecord->table, $column );
+				}
+			}
+
+			$query->from( $activeRecord->table );
 
 			// filter
-			foreach( $args as $key => $value )
+			foreach( $filter as $key => $value )
 			{
-				$query->where( $activeRecord->table, $key, '=', $value );
+				$field = explode('.', $key);
+				if(count($field)==2) {
+					$query->where( $field[0], $field[1], '=', $value );
+				}
+				else {
+					$query->where( $activeRecord->table, $key, '=', $value );
+				}
 			}
 
 			// sort
-			if( $activeRecord->pkey )
+			if($sort_by)
 			{
-				$query->orderBy( $activeRecord->table, $activeRecord->pkey );
+				foreach( $sort_by as $key )
+				{
+					$field = explode('.', $key);
+					if(count($field)==2) {
+						$query->orderBy( $field[0], $field[1] );
+					}
+					else {
+						$query->orderBy( $activeRecord->table, $key );
+					}
+				}
+			}
+			elseif($activeRecord->sortKey)
+			{
+				$query->orderBy( $activeRecord->table, $activeRecord->sortKey );
+			}
+
+			if((int)$limit>0) {
+//				$query->limit($limit); // TODO: implement
 			}
 
 			return $query->openDataSet();
@@ -1730,7 +2040,13 @@
 			// filter
 			foreach( $args as $key => $value )
 			{
-				$query->where( $activeRecord->table, $key, '=', $value );
+				$field = explode('.', $key);
+				if(count($field)==2) {
+					$query->where( $field[0], $field[1], '=', $value );
+				}
+				else {
+					$query->where( $activeRecord->table, $key, '=', $value );
+				}
 			}
 
 			// sort
@@ -1900,11 +2216,6 @@
 								$this->fields[$columnSchema->name] = 'numeric';
 								continue;
 							}
-							elseif( $columnSchema->binary )
-							{
-								$this->fields[$columnSchema->name] = 'binary';
-								continue;
-							}
 							elseif( $columnSchema->blob )
 							{
 								$this->fields[$columnSchema->name] = 'blob';
@@ -1923,10 +2234,10 @@
 						foreach($tableSchema->columnSchemas as $columnSchema)
 						{
 							$rules = array();
-							if($columnSchema->notNull && !$columnSchema->boolean && !$columnSchema->blob)
-							{
-								$rules[] = 'required';
-							}
+//							if($columnSchema->notNull && !$columnSchema->boolean && !$columnSchema->binary)
+//							{
+//								$rules[] = 'required';
+//							}
 							if($columnSchema->datetime || $columnSchema->date || $columnSchema->time)
 							{
 								$rules[] = 'datetime';
@@ -1978,7 +2289,6 @@
 			 * parse all the tables and map relationships "on the fly"
 			 */
 			$pkeys = array();
-			$tables = array();
 
 			// loop through tables in database
 			foreach( $schema->tableSchemas as $ftableSchema )

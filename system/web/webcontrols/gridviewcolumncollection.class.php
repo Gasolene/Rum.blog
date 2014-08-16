@@ -19,6 +19,55 @@
 	final class GridViewColumnCollection extends CollectionBase
 	{
 		/**
+		 * GridView
+		 * @var GridView
+		 */
+		protected $gridView;
+
+
+		/**
+		 * Constructor
+		 * 
+		 * @param  mixed	$collection		can be CollectionBase or array used to initialize Collection
+		 * @return void
+		 */
+		public function __construct(GridView &$gridView, $collection = null )
+		{
+			parent::__construct($collection);
+			$this->gridView = &$gridView;
+		}
+
+
+		/**
+		 * sets object property
+		 *
+		 * @param  string	$field		name of field
+		 * @param  mixed	$value		value of field
+		 * @return void					string of variables
+		 * @ignore
+		 */
+		public function __set( $field, $value )
+		{
+			if( $field === 'ajaxPostBack' )
+			{
+				trigger_error("GridViewColumnCollection::ajaxPostBack is deprecated", E_USER_DEPRECATED);
+				foreach($this->items as $item)
+				{
+					$item->ajaxPostBack = (bool)$value;
+					if($item->filter)
+					{
+						$item->filter->ajaxPostBack = (bool)$value;
+					}
+				}
+			}
+			else
+			{
+				return parent::__get($field);
+			}
+		}
+
+
+		/**
 		 * implement ArrayAccess methods
 		 * @ignore
 		 */
@@ -28,6 +77,7 @@
 			{
 				if( $item instanceof GridViewColumn )
 				{
+					$item->setGridView($this->gridView);
 					$this->items[$index] = $item;
 				}
 				else
@@ -45,20 +95,21 @@
 		/**
 		 * add GridViewColumn to Collection before
 		 *
-		 * @param  GridViewColumn $item
-		 * @param  string         $datafield
+		 * @param  GridViewColumn $item			GridViewColumn
+		 * @param  string         $controlId	control id
 		 *
 		 * @return bool
 		 */
-		public function addBefore( $item, $datafield )
+		public function addBefore( $item, $controlId )
 		{
 			if( $item instanceof GridViewColumn )
 			{
 				$new_items = array();
 				for( $i=0; $i<count($this->items); $i++ )
 				{
-					if( $this->items[$i]->dataField==$datafield )
+					if( $this->items[$i]->controlId==$controlId )
 					{
+						$item->setGridView($this->gridView);
 						$new_items[] = $item;
 					}
 					$new_items[] = $this->items[$i];
@@ -83,6 +134,7 @@
 		{
 			if( $item instanceof GridViewColumn )
 			{
+				$item->setGridView($this->gridView);
 				array_push( $this->items, $item );
 			}
 			else
@@ -110,11 +162,11 @@
 		 *
 		 * @return void
 		 */
-		final public function onLoad()
+		final public function load()
 		{
 			foreach($this->items as $column)
 			{
-				$column->onLoad();
+				$column->load();
 			}
 		}
 
@@ -125,11 +177,40 @@
 		 * @param  array	&$request	request data
 		 * @return void
 		 */
-		final public function onRequest( &$request )
+		final public function requestProcessor( &$request )
 		{
 			foreach($this->items as $column)
 			{
-				$column->onRequest( $request );
+				$column->requestProcessor( $request );
+			}
+		}
+
+
+		/**
+		 * reset filters
+		 *
+		 * @return void
+		 */
+		final public function resetFilters()
+		{
+			foreach($this->items as $column)
+			{
+				$column->resetFilter();
+			}
+		}
+
+
+		/**
+		 * filter DataSet
+		 *
+		 * @param  DataSet	&$ds		DataSet
+		 * @return void
+		 */
+		final public function filterDataSet(\System\DB\DataSet &$ds)
+		{
+			foreach($this->items as $column)
+			{
+				$column->filterDataSet($ds);
 			}
 		}
 
@@ -140,11 +221,11 @@
 		 * @param  array	&$request	request data
 		 * @return void
 		 */
-		final public function onPost( &$request )
+		final public function handlePostEvents( &$request )
 		{
 			foreach($this->items as $column)
 			{
-				$column->onPost( $request );
+				$column->handlePostEvents( $request );
 			}
 		}
 
@@ -154,11 +235,11 @@
 		 *
 		 * @return void
 		 */
-		final public function onRender()
+		final public function render()
 		{
 			foreach($this->items as $column)
 			{
-				$column->onRender();
+				$column->render();
 			}
 		}
 
@@ -167,15 +248,15 @@
 		 * returns index if value is found in collection
 		 *
 		 * @param  string		$controlId			control id
-		 * @return int
+		 * @return GridViewColumn
 		 */
-		public function findColumn( $dataField )
+		public function findColumn( $controlId )
 		{
 			for( $i = 0, $count = count( $this->items ); $i < $count; $i++ )
 			{
-				if( $this->items[$i]->dataField == $dataField )
+				if( $this->items[$i]->controlId == $controlId )
 				{
-					$this->items[$i];
+					return $this->items[$i];
 				}
 			}
 			return null;

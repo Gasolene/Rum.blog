@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\DB;
 
@@ -99,7 +99,7 @@
 		 * @param   array	$args	connection arguments
 		 * @return void
 		 */
-		final protected function __construct( array $args )
+		protected function __construct( array $args )
 		{
 			$this->stats = (bool)\System\Base\ApplicationBase::getInstance()->debug;
 
@@ -166,77 +166,90 @@
 		 * </code>
 		 *
 		 * @param   string   $dsn   connection string
+		 * @param   string   $username   database username
+		 * @param   string   $password   database password
 		 * @return	DataAdapter
 		 */
-		final static public function create( $dsn )
+		final static public function create( $dsn, $username = '', $password = '' )
 		{
-			$args = array( 'server' => 'localhost' );
-			$var = explode( ';', (string) $dsn );
-			$count = sizeof( $var );
-			for( $i=0; $i < $count; $i++ ) {
-				$pair = explode( '=', $var[$i] );
-				if( isset( $pair[1] )) {
-					$args[strtolower(trim($pair[0]))] = trim($pair[1]);
+			$dsn = ltrim($dsn);
+			// detect PDO connection DSN
+			if(strpos($dsn, 'adapter')===0 || strpos($dsn, 'driver')===0)
+			{
+				// Rum connection string detected
+				$args = array( 'server' => 'localhost' );
+				$var = explode( ';', (string) $dsn );
+				$count = sizeof( $var );
+				for( $i=0; $i < $count; $i++ ) {
+					$pair = explode( '=', $var[$i] );
+					if( isset( $pair[1] )) {
+						$args[strtolower(trim($pair[0]))] = trim($pair[1]);
+					}
 				}
-			}
 
-			if( isset( $args['adapter'] ) || isset( $args['driver'] )) {
+				if( isset( $args['adapter'] ) || isset( $args['driver'] )) {
 
-				// get driver
-				$adapter = isset( $args['adapter'] )?$args['adapter']:$args['driver'];
-				$da = null;
+					// get driver
+					$adapter = isset( $args['adapter'] )?$args['adapter']:$args['driver'];
+					$da = null;
 
-				/**
-				 * Create an object to handle this type of
-				 * connection based on the specified driver
-				 */
+					/**
+					 * Create an object to handle this type of
+					 * connection based on the specified driver
+					 */
 
-				/* MySQL adapter */
-				if( $adapter === 'mysql' ) {
-					include_once __SYSTEM_PATH__ . '/db/mysql/mysqldataadapter' . __CLASS_EXTENSION__;
-					$da = new MySQL\MySQLDataAdapter( $args );
-				}
-				/* MySQLi improved adapter */
-				elseif( $adapter === 'mysqli' ) {
-					include_once __SYSTEM_PATH__ . '/db/mysqli/mysqlidataadapter' . __CLASS_EXTENSION__;
-					$da = new MySQLi\MySQLiDataAdapter( $args );
-				}
-				/* MSSQL adapter * /
-				elseif( $adapter === 'mssql' ) {
-					include_once __SYSTEM_PATH__ . '/db/mssql/mssqldataadapter' . __CLASS_EXTENSION__;
-					$da = new MSSQL\MSSQLDataAdapter( $args );
-				}
-				/* PostgreSQL adapter * /
-				elseif( $adapter === 'pssql' ) {
-					include_once __SYSTEM_PATH__ . '/db/pssql/pssqldataadapter' . __CLASS_EXTENSION__;
-					$da = new PSSQL\PSSQLDataAdapter( $args );
-				}
-				/* Text File adapter */
-				elseif( $adapter === 'text' ) {
-					include_once __SYSTEM_PATH__ . '/db/text/textdataadapter' . __CLASS_EXTENSION__;
-					$da = new Text\TextDataAdapter( $args );
-				}
-				/* File System adapter */
-				elseif( $adapter === 'dir' ) {
-					include_once __SYSTEM_PATH__ . '/db/dir/dirdataadapter' . __CLASS_EXTENSION__;
-					$da = new Dir\DirDataAdapter( $args );
-				}
-				else {
-					if( class_exists( $adapter )) {
-						$da = new $adapter( $args );
+					/* MySQL adapter */
+					if( $adapter === 'mysql' ) {
+						include_once __SYSTEM_PATH__ . '/db/mysql/mysqldataadapter' . __CLASS_EXTENSION__;
+						$da = new MySQL\MySQLDataAdapter( $args );
+					}
+					/* MySQLi improved adapter */
+					elseif( $adapter === 'mysqli' ) {
+						include_once __SYSTEM_PATH__ . '/db/mysqli/mysqlidataadapter' . __CLASS_EXTENSION__;						
+						$da = new MySQLi\MySQLiDataAdapter( $args );
+					}
+					/* MSSQL adapter */
+					elseif( $adapter === 'mssql' ) {
+						include_once __SYSTEM_PATH__ . '/db/mssql/mssqldataadapter' . __CLASS_EXTENSION__;
+						$da = new MSSQL\MSSQLDataAdapter( $args );
+					}
+					/* PostgreSQL adapter * /
+					elseif( $adapter === 'pssql' ) {
+						include_once __SYSTEM_PATH__ . '/db/pssql/pssqldataadapter' . __CLASS_EXTENSION__;
+						$da = new PSSQL\PSSQLDataAdapter( $args );
+					}
+					/* Text File adapter */
+					elseif( $adapter === 'text' ) {
+						include_once __SYSTEM_PATH__ . '/db/text/textdataadapter' . __CLASS_EXTENSION__;
+						$da = new Text\TextDataAdapter( $args );
+					}
+					/* File System adapter */
+					elseif( $adapter === 'dir' ) {
+						include_once __SYSTEM_PATH__ . '/db/dir/dirdataadapter' . __CLASS_EXTENSION__;
+						$da = new Dir\DirDataAdapter( $args );
 					}
 					else {
-						throw new DataAdapterException("DataAdapter `{$adapter}` adapter not found");
+						if( class_exists( $adapter )) {
+							$da = new $adapter( $args );
+						}
+						else {
+							throw new DataAdapterException("DataAdapter `{$adapter}` adapter not found");
+						}
 					}
-				}
 
-				// return object
-				return $da;
+					// return object
+					return $da;
+				}
+				else
+				{
+					throw new DataAdapterException("no DataAdapter specified");
+				}
 			}
 			else
 			{
-				// TODO: assume PDO
-				throw new DataAdapterException("no DataAdapter specified");
+				// PDO connection string detected
+				include_once __SYSTEM_PATH__ . '/db/pdo/pdodataadapter' . __CLASS_EXTENSION__;
+				return new PDO\PDODataAdapter($dsn, $username, $password);
 			}
 		}
 
@@ -244,7 +257,7 @@
 		/**
 		 * opens a DataSet specified by the source
 		 *
-		 * @param  string		$source		source string (or QueryBuilder)
+		 * @param  object		$source		source object
 		 * @param  DataSetType	$lock_type	lock type as constant of DataSetType::OpenDynamic(), DataSetType::OpenStatic(), or DataSetType::OpenReadonly()
 		 * @return DataSet					return DataSet
 		 */
@@ -302,12 +315,12 @@
 		/**
 		 * Executes a query procedure on the current connection
 		 *
-		 * @param  string		$query		query to execute
+		 * @param  SQLStatement	$query	SQL statement
 		 * @return void
 		 */
 		final public function execute( $query )
 		{
-			$this->runQuery((string)$query);
+			$this->query($query);
 		}
 
 
@@ -319,7 +332,8 @@
 		 */
 		final public function executeBatch( $batch )
 		{
-			// TODO: very bad!!!
+			// TODO: very bad!!! avoid!
+//			trigger_error("executeBatch is deprecated!", E_USER_DEPRECATED);
 			$queries = explode( ";", $batch );
 
 			foreach( $queries as $query )
@@ -443,6 +457,18 @@
 
 
 		/**
+		 * prepare an SQL statement
+		 * Creates a prepared statement bound to parameters specified by the @symbol
+		 * e.g. SELECT * FROM `table` WHERE user=@user
+		 *
+		 * @param  string	$statement	SQL statement
+		 * @param  array	$parameters	array of parameters to bind
+		 * @return SQLStatement
+		 */
+		abstract public function prepare($statement, array $parameters = array());
+
+
+		/**
 		 * fetches DataSet from datasource string using source string
 		 *
 		 * @param  DataSet	$ds			reference to a DataSet object
@@ -505,7 +531,7 @@
 		/**
 		 * creats a QueryBuilder object
 		 *
-		 * @return QueryBuilderBase
+		 * @return SQLStatementBase
 		 */
 		abstract public function queryBuilder();
 
@@ -519,48 +545,12 @@
 
 
 		/**
-		 * return id of last record inserted
-		 *
-		 * @return int
-		 */
-		abstract public function getLastInsertId();
-
-
-		/**
-		 * return affected rows
-		 *
-		 * @return int
-		 */
-		abstract public function getAffectedRows();
-
-
-		/**
-		 * Returns an escaped string
-		 *
-		 * @param  string	$unescaped_string		String to escape
-		 * @return string
-		 */
-		abstract public function escapeString( $unescaped_string );
-
-
-		/**
-		 * Executes a query procedure on the current connection and return the result
-		 *
-		 * @param  string	$query		query string
-		 * @param  bool		$buffer		buffer resultset
-		 * @return resource
-		 */
-		abstract protected function query( $query, $buffer );
-
-
-		/**
 		 * Executes a query procedure on the current connection and return the result
 		 *
 		 * @param  string		$query		query to execute
-		 * @param  bool			$buffer		buffer resultset
 		 * @return resource
 		 */
-		final protected function runQuery( $query, $buffer = true )
+		final protected function query( $query )
 		{
 			if( $this->stats )
 			{
@@ -571,7 +561,16 @@
 				$this->lastQueryTime = 0;
 			}
 
-			$result = $this->query((string)$query, (bool)$buffer);
+			// Add support for passing prepared statements
+			if($query instanceof SQLStatementBase) {
+				$result = $query->query();
+			}
+			else {
+				// Backwards compatible support
+//				trigger_error("Use of unprepared SQL statements is not recommended, use DataAdapter::prepare() instead", E_USER_WARNING);
+				$statement = $this->prepare($query);
+				$result = $statement->query();
+			}
 
 			if( $this->stats )
 			{

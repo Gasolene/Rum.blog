@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Validators;
 
@@ -56,28 +56,19 @@
 		 */
 		protected function onLoad()
 		{
-			if($this->controlToValidate)
-			{
-				$this->errorMessage = $this->errorMessage?$this->errorMessage:"{$this->controlToValidate->label} " . \str_replace('%x', $this->min, \str_replace('%y', $this->max, \System\Base\ApplicationBase::getInstance()->translator->get('must_be_within_the_range_of_x_and_y', 'must be within the range of %x and %y')));
-			}
+			$this->errorMessage = $this->errorMessage?$this->errorMessage:$this->label.' '.\str_replace('%x', $this->min, \str_replace('%y', $this->max, \System\Base\ApplicationBase::getInstance()->translator->get('must_be_within_the_range_of_x_and_y')));
 		}
 
 
 		/**
-		 * sets the controlId and prepares the control attributes
+		 * validates the passed value
 		 *
-		 * @return void
+		 * @param  mixed $value value to validate
+		 * @return bool
 		 */
-		public function validate()
+		public function validate($value)
 		{
-			if($this->controlToValidate)
-			{
-				return !$this->controlToValidate->value || ((double)$this->controlToValidate->value >= $this->min && $this->controlToValidate->value <= $this->max);
-			}
-			else
-			{
-				throw new \System\Base\InvalidOperationException("no control to validate");
-			}
+			return !$value || ((double)$value >= $this->min && $value <= $this->max);
 		}
 	}
 ?>

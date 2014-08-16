@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Deploy;
 
@@ -51,7 +51,7 @@
 		 * password
 		 * @var string
 		 */
-		protected $_commands	= array();
+		private $_commands	= array();
 
 
 		/**
@@ -75,7 +75,14 @@
 		 */
 		final protected function put( $local_path, $remote_path )
 		{
-			\passthru("pscp -v -r -P {$this->port} ".($this->password?"-pw {$this->password}":"")." \"{$local_path}\" {$this->username}@{$this->server}:{$remote_path}");
+			if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') // if windows
+			{
+				\passthru("pscp -v -r -P {$this->port} ".($this->password?"-pw {$this->password}":"")." \"{$local_path}\" {$this->username}@{$this->server}:{$remote_path}");
+			}
+			else
+			{
+				\passthru("scp -v -r -P {$this->port} ".($this->password?"-pw {$this->password}":"")." \"{$local_path}\" {$this->username}@{$this->server}:{$remote_path}");
+			}
 		}
 
 
@@ -88,11 +95,11 @@
 		{
 			if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') // if windows
 			{
-				\passthru("plink -v -ssh {$this->server} -l {$this->username} ".($this->password?"-pw {$this->password}":"")." \"".\implode(";", $this->_commands)."\"");
+				\passthru("plink -v -P {$this->port} -ssh {$this->server} -l {$this->username} ".($this->password?"-pw {$this->password}":"")." \"".\implode(";", $this->_commands)."\"");
 			}
 			else
 			{
-				\passthru("ssh {$this->server} -l {$this->username} \"".\implode(";", $this->_commands)."\"");
+				\passthru("ssh {$this->server} -p {$this->port} -l {$this->username} \"".\implode(";", $this->_commands)."\"");
 			}
 		}
 	}

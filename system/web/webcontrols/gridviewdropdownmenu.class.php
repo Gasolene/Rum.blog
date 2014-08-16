@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -37,32 +37,34 @@
 		 */
 		public function __construct( $dataField, $pkey, array $values, $parameter='', $headerText='', $footerText='', $className='' )
 		{
-			$this->items = $values;
 			parent::__construct( $dataField, $pkey, $parameter, $headerText, $footerText, $className );
+			trigger_error("GridViewDropDownMenu is deprecated, use GridViewDropDownList instead", E_USER_DEPRECATED);
+
+			$this->items = $values;
 		}
 
 
 		/**
 		 * get item text
 		 *
-		 * @param string $dataField
-		 * @param string $parameter
-		 * @param string $params
+		 * @param string $dataField datafield of the current row
+		 * @param string $parameter parameter to send
 		 * @return string
 		 */
-		protected function getItemText($dataField, $parameter, $params)
+		public function fetchUpdateControl()
 		{
 			if($this->ajaxPostBack)
 			{
-				$params .= "&{$parameter}=\'+this.value+\'";
+				$uri = \Rum::config()->uri;
+				$params = $this->getRequestData() . "&{$this->pkey}='.\\rawurlencode(%{$this->pkey}%).'&{$this->parameter}=\'+encodeURIComponent(this.value)+\'";
 
-				$html = '\'<select class="listbox" onchange="PHPRum.httpRequestObjects[\\\''.strtolower($parameter).'HTTPRequest\\\'] = PHPRum.sendHttpRequest(\\\''.\System\Web\WebApplicationBase::getInstance()->config->uri.'/\\\',\\\''.$this->escape($params).'\\\',\\\'POST\\\', function() { PHPRum.evalHttpResponse(\\\'PHPRum.httpRequestObjects[\\\\\\\''.strtolower($parameter).'HTTPRequest\\\\\\\']\\\') } );">';
+				$html = "'<select name=\"{$this->parameter}\" class=\"listbox\" onchange=\"Rum.evalAsync(\'{$uri}/\',\'".$this->escape($params)."\',\'POST\');\">";
 				foreach($this->items as $key=>$value)
 				{
 					$value = htmlentities($value, ENT_QUOTES);
 					$key = htmlentities($key, ENT_QUOTES);
 
-					$html .= "<option value=\"{$value}\" '.(%{$dataField}%=='{$value}'?'selected=\"selected\"':'').'>{$key}</option>";
+					$html .= "<option value=\"{$value}\" '.(%{$this->dataField}%=='{$value}'?'selected=\"selected\"':'').'>{$key}</option>";
 				}
 				$html .= '</select>\'';
 
@@ -70,18 +72,59 @@
 			}
 			else
 			{
-				$html = '\'<select class="listbox">';
+				$html = "'<select name=\"{$this->parameter}\" class=\"listbox\">";
 				foreach($this->items as $key=>$value)
 				{
 					$value = htmlentities($value, ENT_QUOTES);
 					$key = htmlentities($key, ENT_QUOTES);
 
-					$html .= "<option value=\"{$value}\" '.(%{$dataField}%=='{$value}'?'selected=\"selected\"':'').'>{$key}</option>";
+					$html .= "<option value=\"{$value}\" '.(%{$this->dataField}%=='{$value}'?'selected=\"selected\"':'').'>{$key}</option>";
 				}
 				$html .= '</select>\'';
 
 				return $html;
 			}
+		}
+
+		/**
+		 * get footer text
+		 *
+		 * @param string $dataField datafield of the current row
+		 * @param string $parameter parameter to send
+		 * @return string
+		 */
+		public function fetchInsertControl()
+		{
+			/*
+			if($this->ajaxPostBack)
+			{
+				$uri = \Rum::config()->uri;
+				$params = $this->getRequestData() . "&{$this->parameter}=\'+encodeURIComponent(this.value)+\'";
+
+				$html = "'<select name=\"{$this->parameter}\" class=\"listbox\" onchange=\"Rum.evalAsync(\'{$uri}/\',\'".$this->escape($params)."\',\'POST\');\">";
+				foreach($this->items as $key=>$value)
+				{
+					$value = htmlentities($value, ENT_QUOTES);
+					$key = htmlentities($key, ENT_QUOTES);
+
+					$html .= "<option value=\"{$value}\">{$key}</option>";
+				}
+				$html .= '</select>\'';
+
+				return $html;
+			}
+			*/
+			$html = "'<select name=\"{$this->parameter}\" class=\"listbox\">";
+			foreach($this->items as $key=>$value)
+			{
+				$value = htmlentities($value, ENT_QUOTES);
+				$key = htmlentities($key, ENT_QUOTES);
+
+				$html .= "<option value=\"{$value}\">{$key}</option>";
+			}
+			$html .= '</select>\'';
+
+			return $html;
 		}
 	}
 ?>

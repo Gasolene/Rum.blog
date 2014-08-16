@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Caching;
 
@@ -36,7 +36,7 @@
 		 * @param string $table table name
 		 * @param string $dsn database connection string
 		 */
-		public function __construct($table = '', $dsn = '')
+		public function __construct($table = __CACHE_TABLENAME__, $dsn = '')
 		{
 			if($table)
 			{
@@ -64,10 +64,10 @@
 		{
 			try
 			{
-				$value = \unserialize($this->db->queryBuilder()
+				$value = ($this->db->queryBuilder()
 					->select($this->table, 'value')
 					->from($this->table)
-					->where($this->table, 'cache_id', '>', (string)$id)
+					->where($this->table, 'cache_id', '=', (string)$id)
 					->where($this->table, 'expires', '>', time())
 					->openDataSet()
 					->row["value"]);
@@ -81,7 +81,8 @@
 			{
 				\System\Base\ApplicationBase::getInstance()->dataAdapter->addTableSchema(new \System\DB\TableSchema(
 					array(
-						'name' => $this->table),
+						'name' => $this->table,
+						'primaryKey' => 'cache_id'),
 					array(),
 					array(new \System\DB\ColumnSchema(array(
 						'name' => 'cache_id',
@@ -96,13 +97,13 @@
 						'table' => $this->table,
 						'type' => 'MEDIUMBLOB',
 						'notNull' => true,
-						'blog' => true)),
+						'blob' => true)),
 						new \System\DB\ColumnSchema(array(
 						'name' => 'expires',
 						'table' => $this->table,
-						'type' => 'DATETIME',
+						'type' => 'INTEGER',
 						'notNull' => true,
-						'datetime' => true)))));
+						'integer' => true)))));
 			}
 
 			return null;
@@ -130,10 +131,12 @@
 				$expires = 2147483647;
 			}
 
+			$this->clear($id);
+
 			$this->db->queryBuilder()
 				->insertInto($this->table, array('cache_id', 'value', 'expires'))
 				->values(array((string)$id, \serialize($value), $expires))
-				->runQuery();
+				->execute();
 		}
 
 
@@ -148,8 +151,8 @@
 			$this->db->queryBuilder()
 				->delete()
 				->from($this->table)
-				->where($this->table, 'cache_id', '=', $id)
-				->runQuery();
+				->where($this->table, 'cache_id', '=', (string)$id)
+				->execute();
 		}
 
 
@@ -162,7 +165,7 @@
 		{
 			$this->db->queryBuilder()
 				->truncate($this->table)
-				->runQuery();
+				->execute();
 		}
 
 

@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\XML;
 
@@ -99,7 +99,7 @@
 		 */
 		protected function getEntityValue( $charset = 'utf-8' )
 		{
-			if( $this->innerHtml )
+			if( strlen($this->innerHtml)>0 )
 			{
 				return $this->innerHtml;
 			}

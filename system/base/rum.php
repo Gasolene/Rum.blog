@@ -14,7 +14,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Base;
 
@@ -24,20 +24,7 @@
 	/**
 	 * specifies the default timezone
 	 */
-	if( !defined( '__DEFAULT_TIMEZONE__' ))				define( '__DEFAULT_TIMEZONE__',		'Canada/Mountain' );
-	date_default_timezone_set( __DEFAULT_TIMEZONE__ );
-
-	// rem empty params redirected by the .htaccess file
-	if( isset( $_GET['id'] )) {
-		if( empty( $_GET['id'] )) {
-			unset( $_GET['id'] );
-		}
-	}
-	if( isset( $_GET['page'] )) {
-		if( empty( $_GET['page'] )) {
-			unset( $_GET['page'] );
-		}
-	}
+	date_default_timezone_set(date_default_timezone_get());
 
 	/*
 	 * auto detected env variables
@@ -53,36 +40,7 @@
 
 	// auto detect root path
 	if( !defined( '__ROOT__' )) {
-
-		// current folder
-		$current_dir = __HTDOCS_PATH__?__HTDOCS_PATH__:'.';
-
-		// search for system folder
-		while( $dir = opendir( $current_dir )) {
-			while( $file = readdir( $dir )) {
-				if( $file === 'system' ) {
-					define( '__ROOT__', $current_dir );
-					break 2;
-				}
-			}
-
-			// up one level
-			if( 0 === strpos( $current_dir, '.' )) {
-				// relative
-				$current_dir .= '/..';
-			}
-			elseif( false !== strpos( $current_dir, '/' )) {
-				// *nix
-				$current_dir = substr( $current_dir, 0, strrpos( $current_dir, '/' ));
-			}
-			else {
-				// winNT
-				$current_dir = substr( $current_dir, 0, strrpos( $current_dir, '\\' ));
-			}
-		}
-		if( !defined( '__ROOT__' )) {
-			throw new \Exception("Could not detect root path");
-		}
+		define( '__ROOT__', substr( __FILE__, 0, strlen( __FILE__ ) - 20 ));
 	}
 
 	$protocol = 'http';
@@ -133,6 +91,11 @@
 	if( !defined( '__DB_SCHEMA_VERSION_TABLENAME__' ))	define( '__DB_SCHEMA_VERSION_TABLENAME__',	'db_schema_version' );
 
 	/**
+	 * specifies the user defaults table name
+	 */
+	if( !defined( '__USERDEFAULTS_TABLENAME__' ))		define( '__USERDEFAULTS_TABLENAME__',		'user_defaults' );
+
+	/**
 	 * specifies the cache table name
 	 */
 	if( !defined( '__CACHE_TABLENAME__' ))				define( '__CACHE_TABLENAME__',				'cache' );
@@ -155,11 +118,6 @@
 	/**
 	 * specifies the environment parameter
 	 */
-	if( !defined( '__ENV_CONF_FILENAME__' ))			define( '__ENV_CONF_FILENAME__',			'/environment.php' );
-
-	/**
-	 * specifies the environment parameter
-	 */
 	if( !defined( '__ENV_PARAMETER__' ))				define( '__ENV_PARAMETER__',				'APP_ENV' );
 
 	/**
@@ -175,17 +133,17 @@
 	/**
 	 * specifies the page request parameter
 	 */
-	if( !defined( '__PAGE_REQUEST_PARAMETER__' ))		define( '__PAGE_REQUEST_PARAMETER__',		'page' );
-
-	/**
-	 * specifies the asset request parameter
-	 */
-	if( !defined( '__ASSET_REQUEST_PARAMETER__' ))		define( '__ASSET_REQUEST_PARAMETER__',		'asset' );
+	if( !defined( '__PATH_REQUEST_PARAMETER__' ))		define( '__PATH_REQUEST_PARAMETER__',		'path' );
 
 	/**
 	 * specifies the async request parameter
 	 */
 	if( !defined( '__ASYNC_REQUEST_PARAMETER__' ))		define( '__ASYNC_REQUEST_PARAMETER__',		'async' );
+
+	/**
+	 * specifies the module request parameter
+	 */
+	if( !defined( '__MODULE_REQUEST_PARAMETER__' ))		define( '__MODULE_REQUEST_PARAMETER__',		'modules' );
 
 	/**
 	 * specifies the dev environment name
@@ -241,6 +199,11 @@
 	 * specifies the asyncronous validation timeout
 	 */
 	if( !defined( '__VALIDATION_TIMEOUT__' ))			define( '__VALIDATION_TIMEOUT__',			'3000' );
+
+	/**
+	 * specifies the asyncronous flash message timeout
+	 */
+	if( !defined( '__FLASH_MSG_TIMEOUT__' ))			define( '__FLASH_MSG_TIMEOUT__',			'3000' );
 
 	/**
 	 * specifies the number of warnings to dump
@@ -377,14 +340,14 @@
 	 * @var int
 	 * @ignore
 	 */
-	const INDENT = 2;
+	const INDENT = 0;
 
 	/**
 	 * characters used to denote carriage return
 	 * @var string
 	 * @ignore
 	 */
-	const CARAGERETURN = "\n\r";
+	const CARAGERETURN = '';
 
 	/**
 	 * include prefix
@@ -397,13 +360,14 @@
 	$_SERVER[__ENV_PARAMETER__] = isset($_SERVER[__ENV_PARAMETER__])?$_SERVER[__ENV_PARAMETER__]:__DEV_ENV__;
 
 	// include required scripts
+	require __SYSTEM_PATH__ . '/base/object.class.php';
 	require __SYSTEM_PATH__ . '/base/applicationbase.class.php';
 	require __SYSTEM_PATH__ . '/base/framework.info.file';
 	require __SYSTEM_PATH__ . '/base/classloader.inc.php';
 	require __SYSTEM_PATH__ . '/base/build.class.php';
 	require __SYSTEM_PATH__ . '/rum.class.php';
 
-	if(__HOST__=='localhost' && isset($_GET["page"]) && isset($_GET["id"]) && $_GET["page"]=='dev' && ($_GET["id"]=='clean' || $_GET["id"]=='build'))
+	if(__HOST__=='localhost' && isset($_GET[__PATH_REQUEST_PARAMETER__]) && isset($_GET["id"]) && $_GET[__PATH_REQUEST_PARAMETER__]=='dev' && ($_GET["id"]=='clean' || $_GET["id"]=='build'))
 	{
 		ob_start();
 		Build::$verbose = true;

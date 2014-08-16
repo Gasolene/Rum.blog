@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Security;
 
@@ -86,7 +86,7 @@
 					$da = \System\Base\ApplicationBase::getInstance()->dataAdapter;
 				}
 
-				$ds = $da->openDataSet( $membership['source'] );
+				$ds = $da->prepare($membership['source'])->openDataSet();
 				if( $ds )
 				{
 					$ds->filter( $membership['username-field'], '=', Authentication::$identity, true );
@@ -95,6 +95,12 @@
 						$roles[] = $role[$membership['role-field']];
 					}
 				}
+			}
+
+			// TODO: add LDAP roles
+			// Get roles using ldap
+			foreach( \System\Base\ApplicationBase::getInstance()->config->authenticationMembershipsTables as $ldap )
+			{
 			}
 
 			return $roles;

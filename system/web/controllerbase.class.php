@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web;
 
@@ -22,7 +22,7 @@
 	 * @subpackage		Web
 	 * @author			Darnell Shinbine
 	 */
-	abstract class ControllerBase
+	abstract class ControllerBase extends \System\Base\Object
 	{
 		/**
 		 * Specifies the controller id
@@ -54,12 +54,6 @@
 		 */
 		protected $denyRoles			= array();
 
-		/**
-		 * event collection
-		 * @var EventCollection
-		 */
-		protected $events				= null;
-
 
 		/**
 		 * Constructor
@@ -71,7 +65,7 @@
 		{
 			$this->controllerId = (string)$controllerId;
 
-			if( $this->requireSSL && \System\Web\WebApplicationBase::getInstance()->config->protocol <> 'https' && !isset($GLOBALS["__DISABLE_HEADER_REDIRECTS__"]))
+			if( $this->requireSSL && \Rum::config()->protocol <> 'https' && !isset($GLOBALS["__DISABLE_HEADER_REDIRECTS__"]))
 			{
 				// redirect to secure server (forward session)
 				$url = 'https://' . __NAME__ . (__SSL_PORT__<>443?':'.__SSL_PORT__:'') . \System\Web\WebApplicationBase::getInstance()->getPageURI('', array( \System\Web\WebApplicationBase::getInstance()->session->sessionName => \System\Web\WebApplicationBase::getInstance()->session->sessionId ));
@@ -81,8 +75,6 @@
 				HTTPResponse::redirect($url);
 			}
 
-			// Eveng handling
-			$this->events = new \System\Base\EventCollection();
 			$this->onLoad();
 		}
 
@@ -112,13 +104,9 @@
 			{
 				return $this->denyRoles;
 			}
-			elseif( $field === 'events' )
-			{
-				return $this->events;
-			}
 			else
 			{
-				throw new \System\Base\BadMemberCallException("call to undefined property $field in ".get_class($this));
+				return parent::__get($field);
 			}
 		}
 

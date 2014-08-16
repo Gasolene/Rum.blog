@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Base;
 
@@ -12,7 +12,6 @@
 	 * Provides access to read/write build files
 	 *
 	 * @package			PHPRum
-	 * @subpackage		Caching
 	 * @author			Darnell Shinbine
 	 */
 	final class Build
@@ -67,29 +66,26 @@
 		 */
 		public static function put( $id, $value )
 		{
-			if(file_exists(__BUILD_PATH__))
+			$file = self::getPath( $id );
+			$value = \serialize( $value );
+
+			$fp = @fopen( $file, 'wb+' );
+			if( $fp )
 			{
-				$file = self::getPath( $id );
-				$value = \serialize( $value );
+				if( self::$verbose ) echo "Rebuilding {$file}\r\n";
 
-				$fp = @fopen( $file, 'wb+' );
-				if( $fp )
+				if( fwrite( $fp, $value, strlen( $value )) !== false )
 				{
-					if( self::$verbose ) echo "Rebuilding {$file}\r\n";
-
-					if( fwrite( $fp, $value, strlen( $value )) !== false )
-					{
-						fclose( $fp );
-					}
-					else
-					{
-						throw new \Exception("Could not write to build file {$file}");
-					}
+					fclose( $fp );
+				}
+				else
+				{
+					throw new \System\Utils\FileNotWritableException("Could not write to `{$file}`, check that directory " . __BUILD_PATH__ . " is writable");
 				}
 			}
 			else
 			{
-				mkdir(__BUILD_PATH__);
+				throw new \System\Utils\FileNotWritableException("Could not write to `{$file}`, check that directory " . __BUILD_PATH__ . " is writable");
 			}
 		}
 
@@ -152,7 +148,7 @@
 		 *
 		 * @return void
 		 */
-		public static function build()
+		public static function rebuild()
 		{
 			$app = ApplicationBase::getInstance();
 			if($app instanceof \System\Web\WebApplicationBase)

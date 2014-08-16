@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -51,6 +51,7 @@
 		public function __construct( $controlId, $default = null )
 		{
 			parent::__construct( $controlId, $default );
+			trigger_error("DateTimeSelector is deprecated, use DateTime instead", E_USER_DEPRECATED);
 
 			$this->yearMin = (int) date( 'Y', time() ) - 70;
 			$this->yearMax = (int) date( 'Y', time() ) + 4;
@@ -116,7 +117,7 @@
 		{
 			parent::onLoad();
 
-			$this->defaultHTMLControlId = $this->getHTMLControlIdString().'__hour';
+			$this->defaultHTMLControlId = $this->getHTMLControlId().'__hour';
 		}
 
 
@@ -134,38 +135,38 @@
 				return;
 			}
 
-			if( isset( $httpRequest[$this->getHTMLControlIdString().'__month'] ) &&
-				isset( $httpRequest[$this->getHTMLControlIdString().'__day'] ) &&
-				isset( $httpRequest[$this->getHTMLControlIdString().'__year'] ) &&
-				isset( $httpRequest[$this->getHTMLControlIdString().'__hour'] ) &&
-				isset( $httpRequest[$this->getHTMLControlIdString().'__minute'] ) &&
-				isset( $httpRequest[$this->getHTMLControlIdString().'__meridiem'] ))
+			if( isset( $httpRequest[$this->getHTMLControlId().'__month'] ) &&
+				isset( $httpRequest[$this->getHTMLControlId().'__day'] ) &&
+				isset( $httpRequest[$this->getHTMLControlId().'__year'] ) &&
+				isset( $httpRequest[$this->getHTMLControlId().'__hour'] ) &&
+				isset( $httpRequest[$this->getHTMLControlId().'__minute'] ) &&
+				isset( $httpRequest[$this->getHTMLControlId().'__meridiem'] ))
 			{
 				$this->submitted = true;
 
-				if( isset( $httpRequest[$this->getHTMLControlIdString().'__null'] ) || !$this->allowNull )
+				if( isset( $httpRequest[$this->getHTMLControlId().'__null'] ) || !$this->allowNull )
 				{
-					if( $this->value != $httpRequest[$this->getHTMLControlIdString().'__year'] . '-' .
-							$httpRequest[$this->getHTMLControlIdString().'__month'] . '-' .
-							$httpRequest[$this->getHTMLControlIdString().'__day'] .
+					if( $this->value != $httpRequest[$this->getHTMLControlId().'__year'] . '-' .
+							$httpRequest[$this->getHTMLControlId().'__month'] . '-' .
+							$httpRequest[$this->getHTMLControlId().'__day'] .
 							date( 'H:i:s', strtotime(
-							$httpRequest[$this->getHTMLControlIdString().'__hour'] . ':' .
-							$httpRequest[$this->getHTMLControlIdString().'__minute'] .
-							$httpRequest[$this->getHTMLControlIdString().'__meridiem'] ))) {
+							$httpRequest[$this->getHTMLControlId().'__hour'] . ':' .
+							$httpRequest[$this->getHTMLControlId().'__minute'] .
+							$httpRequest[$this->getHTMLControlId().'__meridiem'] ))) {
 						$this->changed = true;
 					}
 
-					$this->value = $httpRequest[$this->getHTMLControlIdString().'__year'] . '-' .
-						$httpRequest[$this->getHTMLControlIdString().'__month'] . '-' .
-						$httpRequest[$this->getHTMLControlIdString().'__day'] .
+					$this->value = $httpRequest[$this->getHTMLControlId().'__year'] . '-' .
+						$httpRequest[$this->getHTMLControlId().'__month'] . '-' .
+						$httpRequest[$this->getHTMLControlId().'__day'] .
 						date( 'H:i:s', strtotime(
-						$httpRequest[$this->getHTMLControlIdString().'__hour'] . ':' .
-						$httpRequest[$this->getHTMLControlIdString().'__minute'] .
-						$httpRequest[$this->getHTMLControlIdString().'__meridiem'] ));
+						$httpRequest[$this->getHTMLControlId().'__hour'] . ':' .
+						$httpRequest[$this->getHTMLControlId().'__minute'] .
+						$httpRequest[$this->getHTMLControlId().'__meridiem'] ));
 
-					if( isset( $httpRequest[$this->getHTMLControlIdString().'__null'] ))
+					if( isset( $httpRequest[$this->getHTMLControlId().'__null'] ))
 					{
-						unset( $httpRequest[$this->getHTMLControlIdString().'__null'] );
+						unset( $httpRequest[$this->getHTMLControlId().'__null'] );
 					}
 				}
 				else
@@ -177,12 +178,12 @@
 					$this->value = null; // bug fix: changed to null
 				}
 
-				unset( $httpRequest[$this->getHTMLControlIdString().'__month'] );
-				unset( $httpRequest[$this->getHTMLControlIdString().'__day'] );
-				unset( $httpRequest[$this->getHTMLControlIdString().'__year'] );
-				unset( $httpRequest[$this->getHTMLControlIdString().'__hour'] );
-				unset( $httpRequest[$this->getHTMLControlIdString().'__minute'] );
-				unset( $httpRequest[$this->getHTMLControlIdString().'__meridiem'] );
+				unset( $httpRequest[$this->getHTMLControlId().'__month'] );
+				unset( $httpRequest[$this->getHTMLControlId().'__day'] );
+				unset( $httpRequest[$this->getHTMLControlId().'__year'] );
+				unset( $httpRequest[$this->getHTMLControlId().'__hour'] );
+				unset( $httpRequest[$this->getHTMLControlId().'__minute'] );
+				unset( $httpRequest[$this->getHTMLControlId().'__meridiem'] );
 			}
 
 			parent::onRequest($httpRequest);
@@ -200,7 +201,7 @@
 		{
 			// create widgets
 			$editRegion = $this->createDomObject( 'span' );
-			$editRegion->appendAttribute( 'class', ' datetimeselector' );
+			$editRegion->setAttribute( 'class', ' datetimeselector' );
 
 			$select_day = new \System\XML\DomObject( 'select' );
 			$select_month = new \System\XML\DomObject( 'select' );
@@ -211,8 +212,8 @@
 			$null = new \System\XML\DomObject( 'input' );
 
 			$null->setAttribute( 'type', 'checkbox' );
-			$null->setAttribute( 'name', $this->getHTMLControlIdString() . '__null' );
-			$null->setAttribute( 'id', $this->getHTMLControlIdString() . '__null' );
+			$null->setAttribute( 'name', $this->getHTMLControlId() . '__null' );
+			$null->setAttribute( 'id', $this->getHTMLControlId() . '__null' );
 
 			if( $this->value )
 			{
@@ -227,19 +228,19 @@
 			$select_meridiem->setAttribute( 'class', 'datetimeselector_meridiem' );
 			$null->setAttribute( 'class', 'dateselector_null' );
 
-			$select_day->setAttribute( 'name', $this->getHTMLControlIdString() . '__day' );
-			$select_month->setAttribute( 'name', $this->getHTMLControlIdString() . '__month' );
-			$select_year->setAttribute( 'name', $this->getHTMLControlIdString() . '__year' );
-			$select_hour->setAttribute( 'name', $this->getHTMLControlIdString() . '__hour' );
-			$select_minute->setAttribute( 'name', $this->getHTMLControlIdString() . '__minute' );
-			$select_meridiem->setAttribute( 'name', $this->getHTMLControlIdString() . '__meridiem' );
+			$select_day->setAttribute( 'name', $this->getHTMLControlId() . '__day' );
+			$select_month->setAttribute( 'name', $this->getHTMLControlId() . '__month' );
+			$select_year->setAttribute( 'name', $this->getHTMLControlId() . '__year' );
+			$select_hour->setAttribute( 'name', $this->getHTMLControlId() . '__hour' );
+			$select_minute->setAttribute( 'name', $this->getHTMLControlId() . '__minute' );
+			$select_meridiem->setAttribute( 'name', $this->getHTMLControlId() . '__meridiem' );
 
-			$select_day->setAttribute( 'id', $this->getHTMLControlIdString() . '__day' );
-			$select_month->setAttribute( 'id', $this->getHTMLControlIdString() . '__month' );
-			$select_year->setAttribute( 'id', $this->getHTMLControlIdString() . '__year' );
-			$select_hour->setAttribute( 'id', $this->getHTMLControlIdString() . '__hour' );
-			$select_minute->setAttribute( 'id', $this->getHTMLControlIdString() . '__minute' );
-			$select_meridiem->setAttribute( 'id', $this->getHTMLControlIdString() . '__meridiem' );
+			$select_day->setAttribute( 'id', $this->getHTMLControlId() . '__day' );
+			$select_month->setAttribute( 'id', $this->getHTMLControlId() . '__month' );
+			$select_year->setAttribute( 'id', $this->getHTMLControlId() . '__year' );
+			$select_hour->setAttribute( 'id', $this->getHTMLControlId() . '__hour' );
+			$select_minute->setAttribute( 'id', $this->getHTMLControlId() . '__minute' );
+			$select_meridiem->setAttribute( 'id', $this->getHTMLControlId() . '__meridiem' );
 
 			$select_month->setAttribute( 'tabIndex', $this->tabIndex++ );
 			$select_day->setAttribute( 'tabIndex', $this->tabIndex++ );
@@ -253,34 +254,46 @@
 			$value=$this->value?strtotime($this->value)?$this->value:date('m/d/y g:ia', time()):date('m/d/y g:ia', time());
 
 			// auto set on date
-			$select_day->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true;' );
-			$select_month->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true;' );
-			$select_year->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true;' );
-			$select_hour->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true;' );
-			$select_minute->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true;' );
-			$select_meridiem->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true;' );
+			if( $this->allowNull )
+			{
+				$select_day->setAttribute( 'onchange', 'Rum.id(\'' . $this->getHTMLControlId() . '__null\').checked = true;' );
+				$select_month->setAttribute( 'onchange', 'Rum.id(\'' . $this->getHTMLControlId() . '__null\').checked = true;' );
+				$select_year->setAttribute( 'onchange', 'Rum.id(\'' . $this->getHTMLControlId() . '__null\').checked = true;' );
+				$select_hour->setAttribute( 'onchange', 'Rum.id(\'' . $this->getHTMLControlId() . '__null\').checked = true;' );
+				$select_minute->setAttribute( 'onchange', 'Rum.id(\'' . $this->getHTMLControlId() . '__null\').checked = true;' );
+				$select_meridiem->setAttribute( 'onchange', 'Rum.id(\'' . $this->getHTMLControlId() . '__null\').checked = true;' );
+			}
 
 			// set onchange attribute
 			if( $this->autoPostBack )
 			{
-				$select_day->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true; submit();' );
-				$select_month->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true; submit();' );
-				$select_year->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true; submit();' );
-				$select_hour->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true; submit();' );
-				$select_minute->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true; submit();' );
-				$select_meridiem->setAttribute( 'onchange', 'getElementById(\'' . $this->getHTMLControlIdString() . '__null\').checked = true; submit();' );
-				$null->setAttribute( 'onchange', 'document.getElementById(\''.$this->getParentByType('\System\Web\WebControls\Form')->getHTMLControlIdString().'\').submit();' );
+				$select_day->setAttribute( 'onchange', 'submit();' );
+				$select_month->setAttribute( 'onchange', 'submit();' );
+				$select_year->setAttribute( 'onchange', 'submit();' );
+				$select_hour->setAttribute( 'onchange', 'submit();' );
+				$select_minute->setAttribute( 'onchange', 'submit();' );
+				$select_meridiem->setAttribute( 'onchange', 'submit();' );
+				$null->setAttribute( 'onchange', 'Rum.id(\''.$this->getParentByType('\System\Web\WebControls\Form')->getHTMLControlId().'\').submit();' );
 			}
 
 			if( $this->ajaxPostBack )
 			{
-				$select_day->appendAttribute( 'onchange', $this->ajaxHTTPRequest .      ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'__post=1&'.$this->getHTMLControlIdString().'=\'+this.value+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' );' );
-				$select_month->appendAttribute( 'onchange', $this->ajaxHTTPRequest .    ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'__post=1&'.$this->getHTMLControlIdString().'=\'+this.value+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' );' );
-				$select_year->appendAttribute( 'onchange', $this->ajaxHTTPRequest .     ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'__post=1&'.$this->getHTMLControlIdString().'=\'+this.value+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' );' );
-				$select_hour->appendAttribute( 'onchange', $this->ajaxHTTPRequest .     ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'__post=1&'.$this->getHTMLControlIdString().'=\'+this.value+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' );' );
-				$select_minute->appendAttribute( 'onchange', $this->ajaxHTTPRequest .   ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'__post=1&'.$this->getHTMLControlIdString().'=\'+this.value+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' );' );
-				$select_meridiem->appendAttribute( 'onchange', $this->ajaxHTTPRequest . ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'__post=1&'.$this->getHTMLControlIdString().'=\'+this.value+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' );' );
-				$null->appendAttribute( 'onchange', $this->ajaxHTTPRequest .            ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'__post=1&'.$this->getHTMLControlIdString().'=\'+this.value+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' );' );
+				$js = '\'' . $this->getHTMLControlId() . '__day=\' + Rum.id(\'' . $this->getHTMLControlId() . '__day\').value + ';
+				$js .= '\'&' . $this->getHTMLControlId() . '__month=\' + Rum.id(\'' . $this->getHTMLControlId() . '__month\').value + ';
+				$js .= '\'&' . $this->getHTMLControlId() . '__year=\' + Rum.id(\'' . $this->getHTMLControlId() . '__year\').value + ';
+				$js .= '\'&' . $this->getHTMLControlId() . '__hour=\' + Rum.id(\'' . $this->getHTMLControlId() . '__hour\').value + ';
+				$js .= '\'&' . $this->getHTMLControlId() . '__minute=\' + Rum.id(\'' . $this->getHTMLControlId() . '__minute\').value + ';
+				$js .= '\'&' . $this->getHTMLControlId() . '__meridiem=\' + Rum.id(\'' . $this->getHTMLControlId() . '__meridiem\').value + ';
+				if($this->allowNull) $js .= '\'&' . $this->getHTMLControlId() . '__null=\' + Rum.id(\'' . $this->getHTMLControlId() . '__null\').value + ';
+				$js .= '\'';
+
+				$select_day->setAttribute( 'onchange',      'Rum.evalAsync(\'' . $this->ajaxCallback . '\','.$js.'&'.$this->getRequestData().'\',\'POST\');' );
+				$select_month->setAttribute( 'onchange',    'Rum.evalAsync(\'' . $this->ajaxCallback . '\','.$js.'&'.$this->getRequestData().'\',\'POST\');' );
+				$select_year->setAttribute( 'onchange',     'Rum.evalAsync(\'' . $this->ajaxCallback . '\','.$js.'&'.$this->getRequestData().'\',\'POST\');' );
+				$select_hour->setAttribute( 'onchange',     'Rum.evalAsync(\'' . $this->ajaxCallback . '\','.$js.'&'.$this->getRequestData().'\',\'POST\');' );
+				$select_minute->setAttribute( 'onchange',   'Rum.evalAsync(\'' . $this->ajaxCallback . '\','.$js.'&'.$this->getRequestData().'\',\'POST\');' );
+				$select_meridiem->setAttribute( 'onchange', 'Rum.evalAsync(\'' . $this->ajaxCallback . '\','.$js.'&'.$this->getRequestData().'\',\'POST\');' );
+				$null->setAttribute( 'onchange',            'Rum.evalAsync(\'' . $this->ajaxCallback . '\','.$js.'&'.$this->getRequestData().'\',\'POST\');' );
 			}
 
 			// set invalid class
@@ -462,6 +475,17 @@
 			}
 
 			return $editRegion;
+		}
+
+
+		/**
+		 * Event called on ajax callback
+		 *
+		 * @return void
+		 */
+		protected function onUpdateAjax()
+		{
+			$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("console.log('DateTimeSelector has no update ajax implementation');");
 		}
 	}
 ?>

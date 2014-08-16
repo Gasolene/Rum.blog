@@ -3,55 +3,142 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\DB\MSSQL;
 	use \System\DB\DataAdapter;
 
 
 	/**
-	 * Represents an open connection to a MySQL database
+	 * Represents an open connection to a MSSQL database
 	 *
 	 * @package			PHPRum
 	 * @subpackage		DB
 	 * @author			Darnell Shinbine
 	 */
-	class MSSQLDataAdapter extends SQLDataAdapter
+	final class MSSQLDataAdapter extends DataAdapter
 	{
+		/**
+		 * Handle to the open connection to the datasource
+		 * @var resource
+		 */
+		private $link;
+
+		/**
+		 * Specifies the character set
+		 * @var string
+		 */
+		protected $charset				= 'utf8';
+
+
+		/**
+		 * opens a connection to a mysql database
+		 * @return bool						TRUE if successfull
+		 */
+		public function open()
+		{
+			trigger_error("The MSSQLDataAdapter is beta, use with caution", E_USER_NOTICE);
+
+			if( !$this->link )
+			{
+				if( isset( $this->args['server'] ) &&
+					isset( $this->args['uid'] ) &&
+					isset( $this->args['pwd'] ) &&
+					isset( $this->args['database'] ))
+				{
+					$this->link = \sqlsrv_connect( $this->args['server'] , array( "UID"=>$this->args['uid'], "PWD"=>$this->args['pwd'], "Database"=>$this->args["database"] ));
+
+					if( $this->link )
+					{
+						return true;
+					}
+					else
+					{
+						throw new \System\DB\DatabaseException("could not connect to database " . implode(' ', array_pop(sqlsrv_errors())));
+					}
+				}
+				else
+				{
+					throw new \System\DB\DataAdapterException("missing required connection string parameter");
+				}
+			}
+			else
+			{
+				throw new \System\Base\InvalidOperationException("connection already open");
+			}
+		}
+
+
+		/**
+		 * closes an open connection
+		 *
+		 * @return bool					true if successfull
+		 */
+		public function close()
+		{
+			if( $this->link )
+			{
+				if( sqlsrv_close( $this->link ))
+				{
+					$this->link = null;
+					return true;
+				}
+				else
+				{
+					throw new DatabaseException("could not close mssql connection");
+				}
+			}
+			else
+			{
+				throw new \System\Base\InvalidOperationException("connection already closed");
+			}
+		}
+
+
+		/**
+		 * returns true if a connection to a datasource is currently open
+		 *
+		 * @return bool					true if connection open
+		 */
+		public function opened()
+		{
+			return (bool)$this->link;
+		}
+
+
+		/**
+		 * prepare an SQL statement
+		 * Creates a prepared statement bound to parameters specified by the @symbol
+		 * e.g. SELECT * FROM `table` WHERE user=@user
+		 *
+		 * @param  string	$statement	SQL statement
+		 * @param  array	$parameters	array of parameters to bind
+		 * @return SQLStatement
+		 */
+		public function prepare($statement, array $parameters = array())
+		{
+			$mssqlStatement = new MSSQLStatement($this, $this->link);
+			$mssqlStatement->prepare($statement, $parameters);
+			return $mssqlStatement;
+		}
+
+
 		/**
 		 * fetches DataSet from database string using source string
 		 *
 		 * @param  DataSet	&$ds		empty DataSet object
 		 * @return void
 		 */
-		public function fill( DataSet &$ds )
+		public function fill( \System\DB\DataSet &$ds )
 		{
 			if( $this->link )
 			{
-				$source = '';
-				if( $ds->source instanceof QueryBuilder )
-				{
-					$source = $this->getQuery( $ds->source );
-				}
-				elseif( !strstr( strtoupper($ds->source), 'SELECT' ) &&
-					!strstr( strtoupper($ds->source), 'DESCRIBE' ) &&
-					!strstr( strtoupper($ds->source), 'SHOW' ))
-				{
-					// source is table name
-					$source = 'SELECT * FROM [' . $ds->source . ']';
-				}
-				else
-				{
-					$source = $ds->source;
-				}
+				$result = $this->query( $ds->source );
 
-				// establish link to db resource
-				// replaced mysql_query with $this->execute
-				$result = $this->executeInternal( $source );
 				$fields = array();
 				if( $result )
 				{
-					// get table of mysqli types
+					// get table of mssql types
 					$mssql_type = array();
 					// int
 					$mssql_type[-7]							= 'BIT';
@@ -97,47 +184,23 @@
 					$colcount = sqlsrv_num_fields( $result );
 
 					// set table property
-					$ds->properties['table'] = $this->getTableFromSQL( $source );
+					$ds->setTable($this->getTableFromSQL( $ds->source ));
+					$fieldMeta = \sqlsrv_field_metadata( $result );
 
 					for( $i=0; $i < $colcount; $i++ )
 					{
-						$fieldMeta = sqlsrv_field_metadata( $result );
-						$field = $this->getField($ds->properties['table'], $fieldMeta[$i]["Name"]);
-
+						$field = $this->getField($ds->table, $fieldMeta[$i]["Name"]);
 						// mssql field info
-						$field->length	      =        $fieldMeta[$i]["Size"];
-						$field->type          =        $mssql_type[$fieldMeta[$i]["Type"]];
-
-						// mssql column types
-						$field->string        = (bool) (( $fieldMeta[$i]["Type"] === 1 ) ||
-														( $fieldMeta[$i]["Type"] === -8 ) ||
-														( $fieldMeta[$i]["Type"] === 12 ) ||
-														( $fieldMeta[$i]["Type"] === -9 ) ||
-														( $fieldMeta[$i]["Type"] === -1 ) ||
-														( $fieldMeta[$i]["Type"] === -10 ));
-
-						$field->integer       = (bool) (( $fieldMeta[$i]["Type"] === -7 ) ||
-														( $fieldMeta[$i]["Type"] === -6 ) ||
-														( $fieldMeta[$i]["Type"] === 5 ) ||
-														( $fieldMeta[$i]["Type"] === 4 ) ||
-														( $fieldMeta[$i]["Type"] === -5 ) ||
-														( $fieldMeta[$i]["Type"] === -2 ) ||
-														( $fieldMeta[$i]["Type"] === -11 ));
-
-						$field->real          = (bool) (( $fieldMeta[$i]["Type"] === 2 ) ||
-														( $fieldMeta[$i]["Type"] === 3 ) ||
-														( $fieldMeta[$i]["Type"] === 6 ) ||
-														( $fieldMeta[$i]["Type"] === 7 ));
-
-						$field->date          = (bool)  ( $fieldMeta[$i]["Type"] === 91 );
-						$field->time          = (bool)  ( $fieldMeta[$i]["Type"] === -154 );
-						$field->datetime      = (bool)  ( $fieldMeta[$i]["Type"] === 93 );
-
-						$field->blob          = (bool) (( $fieldMeta[$i]["Type"] === -2 ) ||
-														( $fieldMeta[$i]["Type"] === -3 ) ||
-														( $fieldMeta[$i]["Type"] === -4 ));
-
-						$field->numeric       = (bool) (( $fieldMeta[$i]["Type"] === -7 ) ||
+						$fieldMetas[] = new \System\DB\ColumnSchema(array(
+							'name' => (string) $fieldMeta[$i]["Name"],
+							'table' => (string) $ds->table,
+							'type' => (string) $mssql_type[$fieldMeta[$i]["Type"]],
+							'length' =>  intval($fieldMeta[$i]["Size"])==0?intval($fieldMeta[$i]["Precision"]):intval($fieldMeta[$i]["Size"]),
+							'notNull' => (bool)  ( !$fieldMeta[$i]["Nullable"] ),
+							'primaryKey' => (bool) $field['primaryKey'],
+							'foreignKey' => false,
+							'unique' => (bool) $field['unique'],
+							'numeric' => (bool) (( $fieldMeta[$i]["Type"] === -7 ) ||
 														( $fieldMeta[$i]["Type"] === -6 ) ||
 														( $fieldMeta[$i]["Type"] === 5 ) ||
 														( $fieldMeta[$i]["Type"] === 4 ) ||
@@ -147,20 +210,36 @@
 														( $fieldMeta[$i]["Type"] === 2 ) ||
 														( $fieldMeta[$i]["Type"] === 3 ) ||
 														( $fieldMeta[$i]["Type"] === 6 ) ||
-														( $fieldMeta[$i]["Type"] === 7 ));
+														( $fieldMeta[$i]["Type"] === 7 )),
+							'string' => (bool) (( $fieldMeta[$i]["Type"] === 1 ) ||
+														( $fieldMeta[$i]["Type"] === -3  && (bool)$fieldMeta[$i]["Size"]) ||
+														( $fieldMeta[$i]["Type"] === -8 ) ||
+														( $fieldMeta[$i]["Type"] === 12 ) ||
+														( $fieldMeta[$i]["Type"] === -9 ) ||
+														( $fieldMeta[$i]["Type"] === -1 ) ||
+														( $fieldMeta[$i]["Type"] === -10 )),
+							'integer' => (bool) (( $fieldMeta[$i]["Type"] === -7 ) ||
+														( $fieldMeta[$i]["Type"] === -6 ) ||
+														( $fieldMeta[$i]["Type"] === 5 ) ||
+														( $fieldMeta[$i]["Type"] === 4 ) ||
+														( $fieldMeta[$i]["Type"] === -5 ) ||
+														( $fieldMeta[$i]["Type"] === -11 )),
+							'real' => (bool) (( $fieldMeta[$i]["Type"] === 2 ) ||
+														( $fieldMeta[$i]["Type"] === 3 ) ||
+														( $fieldMeta[$i]["Type"] === 6 ) ||
+														( $fieldMeta[$i]["Type"] === 7 )),
+							'date' => (bool)  ( $fieldMeta[$i]["Type"] === 91 ),
+							'time' => (bool)  ( $fieldMeta[$i]["Type"] === -154 ),
+							'datetime' => (bool)  ( $fieldMeta[$i]["Type"] === 93 ),
+							'boolean' => (bool)  ( $fieldMeta[$i]["Type"] === -7 ),
+							'autoIncrement' => $field['autoIncrement'],
+							'blob' => (bool) (( $fieldMeta[$i]["Type"] === -2 ) ||
+														( $fieldMeta[$i]["Type"] === -3 ))
+							));
 
-						$field->boolean       = (bool)  ( $fieldMeta[$i]["Type"] === -7 );
-
-						// mssql field flags
-						$field->notNull       = (bool)  ( !$fieldMeta[$i]["Nullable"] );
-						//TODO:$field->unique       = (bool) ( !$fieldMeta["Nullable"] );
-
-						$field->binary        = (bool) (( $fieldMeta[$i]["Type"] === -2 ) ||
-														( $fieldMeta[$i]["Type"] === -3 ));
-
-						// add field to field collection
-						$fields[] = $field;
+							$fields[]=$fieldMeta[$i]["Name"];
 					}
+
 
 					/*
 					 * create record objects
@@ -171,17 +250,21 @@
 					 */
 
 					$rowcount = sqlsrv_num_rows( $result );
-					$rows = array();
-					for( $row=0; $row < $rowcount; $row++ )
+
+					$rows = array();$j=0;
+					while($row = sqlsrv_fetch_array( $result ))
 					{
 						// add row to DataSet
-						$rows[] = sqlsrv_fetch( $result );
+						for( $i=0; $i < $colcount; $i++ ) $rows[$j][$fields[$i]]=$row[$i];						
+						$j++;												
 					}
-
 					// set rows
 					$ds->setRows( $rows );
-
-					// cleanup
+					// set field meta
+					$ds->setFieldMeta( $fieldMetas );
+					// set fields
+					$ds->setFields($fields);
+						// cleanup
 					sqlsrv_free_stmt( $result );
 				}
 				else
@@ -197,64 +280,262 @@
 
 
 		/**
-		 * opens a connection to a mysql database
-		 * @return bool						TRUE if successfull
+		 * builds a DataBaseSchema object
+		 *
+		 * @return DatabaseSchema
 		 */
-		public function open()
+		public function buildSchema()
 		{
-			if( !$this->link )
-			{
-				if( isset( $this->args['server'] ) &&
-					isset( $this->args['uid'] ) &&
-					isset( $this->args['pwd'] ) &&
-					isset( $this->args['database'] ))
-				{
-					$this->link = sqlsrv_connect( 'DTOWN\SQLEXPRESS', array( "UID"=>$this->args['uid'], "PWD"=>$this->args['pwd'], "Database"=>$this->args["database"] ));
+			$databaseProperties = array();
+			$tableSchemas = array();
 
-					if( $this->link )
-					{
-						return true;
-					}
-					else
-					{
-						throw new DatabaseException("could not connect to database " . implode(' ', array_pop(sqlsrv_errors())));
-					}
-				}
-				else
-				{
-					throw new DataAdapterException("missing required connection string parameter");
-				}
-			}
-			else
+			$tables = $this->query( "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';" );
+
+			while($table = \sqlsrv_fetch_array($tables))
 			{
-				throw new \System\Base\InvalidOperationException("connection already open");
+				$i=0;
+				$tableProperties = array('name'=>$table[0]);
+				$foreignKeys = array();
+				$columnSchemas = array();
+
+				$columns = $this->query( "SELECT * FROM [{$table[0]}]" );
+
+				// get table of mssql types
+				$mssql_type = array();
+				$mssql_type[-7]							= 'BIT';
+				$mssql_type[-6]							= 'TINYINT';
+				$mssql_type[5]							= 'SMALLINT';
+				$mssql_type[4]							= 'INT';
+				$mssql_type[-5]							= 'BIGINT';
+				$mssql_type[-2]							= 'TIMESTAMP';
+				$mssql_type[-11]						= 'UNIQUEIDENTIFIER';
+
+				$mssql_type[2]							= 'NUMERIC';
+				$mssql_type[3]							= 'DECIMAL';
+				$mssql_type[6]							= 'FLOAT';
+				$mssql_type[7]							= 'REAL';
+
+				$mssql_type[91]							= 'DATE';
+				$mssql_type[93]							= 'DATETIME';
+				$mssql_type[-155]						= 'DATETIMEOFFSET';
+				$mssql_type[-154]						= 'TIME';
+
+				$mssql_type[1]							= 'CHAR';
+				$mssql_type[-8]							= 'NCHAR';
+				$mssql_type[12]							= 'VARCHAR';
+				$mssql_type[-9]							= 'NVARCHAR';
+				$mssql_type[-1]							= 'TEXT';
+				$mssql_type[-10]						= 'NTEXT';
+
+				$mssql_type[-2]							= 'BINARY';
+				$mssql_type[-3]							= 'VARBINARY';
+				$mssql_type[-4]							= 'IMAGE';
+				$mssql_type[-151]						= 'UDT';
+				$mssql_type[-152]						= 'XML';
+
+				$fieldMeta = sqlsrv_field_metadata( $columns );
+				while($i < \sqlsrv_num_fields($columns))
+				{
+					$field = $this->getField($table[0], $fieldMeta[$i]["Name"]);
+					// setting primary key
+					if((bool) $field['primaryKey'])
+					{						
+						$tableProperties['primaryKey'] = $fieldMeta[$i]["Name"];
+					}
+					// mssql field info
+					$columnSchemas[] = new \System\DB\ColumnSchema(array(
+							'name' => (string) $fieldMeta[$i]["Name"],
+							'table' => (string) $table[0],
+							'type' => (string) $mssql_type[$fieldMeta[$i]["Type"]],
+							'length' =>  intval($fieldMeta[$i]["Size"])==0?intval($fieldMeta[$i]["Precision"]):intval($fieldMeta[$i]["Size"]),
+							'notNull' => (bool)  ( !$fieldMeta[$i]["Nullable"] ),
+							'primaryKey' => (bool) $field['primaryKey'],
+							'foreignKey' => false,
+							'unique' => (bool) $field['unique'],
+							'numeric' => (bool) (( $fieldMeta[$i]["Type"] === -7 ) ||
+														( $fieldMeta[$i]["Type"] === -6 ) ||
+														( $fieldMeta[$i]["Type"] === 5 ) ||
+														( $fieldMeta[$i]["Type"] === 4 ) ||
+														( $fieldMeta[$i]["Type"] === -5 ) ||
+														( $fieldMeta[$i]["Type"] === -2 ) ||
+														( $fieldMeta[$i]["Type"] === -11 ) ||
+														( $fieldMeta[$i]["Type"] === 2 ) ||
+														( $fieldMeta[$i]["Type"] === 3 ) ||
+														( $fieldMeta[$i]["Type"] === 6 ) ||
+														( $fieldMeta[$i]["Type"] === 7 )),
+							'string' => (bool) (( $fieldMeta[$i]["Type"] === 1 ) ||
+														( $fieldMeta[$i]["Type"] === -8 ) ||
+														( $fieldMeta[$i]["Type"] === 12 ) ||
+														( $fieldMeta[$i]["Type"] === -9 ) ||
+														( $fieldMeta[$i]["Type"] === -1 ) ||
+														( $fieldMeta[$i]["Type"] === -10 )),
+							'integer' => (bool) (( $fieldMeta[$i]["Type"] === -7 ) ||
+														( $fieldMeta[$i]["Type"] === -6 ) ||
+														( $fieldMeta[$i]["Type"] === 5 ) ||
+														( $fieldMeta[$i]["Type"] === 4 ) ||
+														( $fieldMeta[$i]["Type"] === -5 ) ||														
+														( $fieldMeta[$i]["Type"] === -11 )),
+							'real' => (bool) (( $fieldMeta[$i]["Type"] === 2 ) ||
+														( $fieldMeta[$i]["Type"] === 3 ) ||
+														( $fieldMeta[$i]["Type"] === 6 ) ||
+														( $fieldMeta[$i]["Type"] === 7 )),
+							'date' => (bool)  ( $fieldMeta[$i]["Type"] === 91 ),
+							'time' => (bool)  ( $fieldMeta[$i]["Type"] === -154 ),
+							'datetime' => (bool)  ( $fieldMeta[$i]["Type"] === 93 ),
+							'boolean' => (bool)  ( $fieldMeta[$i]["Type"] === -7 ),
+							'autoIncrement' => $field['autoIncrement'],
+							'blob' => (bool) (( $fieldMeta[$i]["Type"] === -2 ) ||
+														( $fieldMeta[$i]["Type"] === -3 ))
+							));
+
+					$i++;
+				}
+
+				$tableSchemas[] = new \System\DB\TableSchema($tableProperties, $foreignKeys, $columnSchemas);
 			}
+
+			return new \System\DB\DatabaseSchema($databaseProperties, $tableSchemas);
 		}
 
 
 		/**
-		 * closes an open connection
+		 * creats a TableSchema object
 		 *
-		 * @return bool					true if successfull
+		 * @return DatabaseSchema
 		 */
-		public function close()
+		public function addTableSchema( \System\DB\TableSchema &$tableSchema )
 		{
-			if( $this->link )
+			$primaryKeys = array();
+			$indexKeys = array();
+			$uniqueKeys = array();
+			$columns = "";
+
+			foreach($tableSchema->columnSchemas as $columnSchema)
 			{
-				if( sqlsrv_close( $this->link ))
+				$type = "";
+
+				if($columnSchema->integer)
 				{
-					$this->link = null;
-					return true;
+					$type = "INT({$columnSchema->length})";
+				}
+				elseif($columnSchema->real)
+				{
+					$type = "FLOAT({$columnSchema->length})";
+				}
+				elseif($columnSchema->boolean)
+				{
+					$type = "BIT";
+				}
+				elseif($columnSchema->date)
+				{
+					$type = "DATE";
+				}
+				elseif($columnSchema->time)
+				{
+					$type = "TIME";
+				}
+				elseif($columnSchema->datetime)
+				{
+					$type = "DATETIME";
+				}
+				elseif($columnSchema->blob)
+				{
+					$type = "VARBINARY({$columnSchema->length})";
 				}
 				else
 				{
-					throw new DatabaseException("could not close mssql connection");
+					$type = "VARCHAR({$columnSchema->length}) ";
+				}
+
+				if($columns) $columns .= ",\n	";
+				$columns .= "{$columnSchema->name} {$type}".($columnSchema->notNull?' NOT NULL':'').($columnSchema->autoIncrement?' AUTO_INCREMENT':'');
+
+				if($columnSchema->primaryKey)
+				{
+					$primaryKeys[] = $columnSchema->name;
+				}
+
+				if($columnSchema->foreignKey)
+				{
+					$indexKeys[] = $columnSchema->name;
+				}
+
+				if($columnSchema->unique)
+				{
+					$uniqueKeys[] = $columnSchema->name;
 				}
 			}
-			else
+
+			if($primaryKeys)
 			{
-				throw new \System\Base\InvalidOperationException("connection already closed");
+				$column = "";
+				foreach($primaryKeys as $primaryKey)
+				{
+					if($column) $column .= ", ";
+					$column .= "{$primaryKey}";
+				}
+
+				$columns .= ",\n	PRIMARY KEY ({$column})";
 			}
+
+			if($indexKeys)
+			{
+				$column = "";
+				foreach($indexKeys as $indexKey)
+				{
+					if($column) $column .= ", ";
+					$column .= "{$indexKey}";
+				}
+
+				$columns .= ",\n	INDEX ({$column})";
+			}
+
+			if($uniqueKeys)
+			{
+				$column = "";
+				foreach($uniqueKeys as $uniqueKey)
+				{
+					if($column) $column .= ", ";
+					$column .= "{$uniqueKey}";
+				}
+
+				$columns .= ",\n	UNIQUE ({$column})";
+			}
+
+			$this->execute("CREATE TABLE {$tableSchema->name} (\n	{$columns}\n);");
+		}
+
+
+		/**
+		 * alters a TableSchema object
+		 *
+		 * @return DatabaseSchema
+		 */
+		public function alterTableSchema( \System\DB\TableSchema &$tableSchema )
+		{
+			throw new \System\Base\MethodNotImplementedException();
+		}
+
+
+		/**
+		 * drops a TableSchema object
+		 *
+		 * @return DatabaseSchema
+		 */
+		public function dropTableSchema( \System\DB\TableSchema &$tableSchema )
+		{
+			throw new \System\Base\MethodNotImplementedException();
+		}
+
+
+		/**
+		 * creats a Transaction object
+		 *
+		 * @return MSSQLTransaction
+		 */
+		public function beginTransaction()
+		{
+			return new MSSQLTransaction($this);
 		}
 
 
@@ -264,64 +545,37 @@
 		 * @param  DataSet	&$ds		reference to a DataSet
 		 * @return void
 		 */
-		final public function insertDataRecord( DataSet &$ds )
+		final public function insert(\System\DB\DataSet &$ds )
 		{
 			if( $this->link )
 			{
-				/**
-				 * connection to mysql database
-				 * attempt to insert record into table using DataSet
-				 */
-				$set_fields = '';
-				$set_values = '';
+				$tableSchema = $ds->dataAdapter->getSchema()->seek($ds->table);
+				$fields = $ds->fields;
+				$row = $ds->row;
 
-				// build sql string
-				foreach( $ds->fields as $field )
+				for($i=0; $i<count($ds->fieldMeta); $i++)
 				{
-					// get primary key name
-					if( $field->autoIncrement )
+					if( $ds->fieldMeta[$i]->name == $tableSchema->primaryKey && $row[$tableSchema->primaryKey] == null)
 					{
-						$idkey_name = $field->name;
-					}
-					else
-					{
-						$set_fields .= '`' . $field->name . '`, ';
-
-						if( $ds[$field->name] === null )
-						{
-							$set_values .= 'NULL, ';
-						}
-						elseif( $field->numeric )
-						{
-							$set_values .= (real)$ds[$field->name] . ', ';
-						}
-						else
-						{
-							$set_values .= '"' . $this->getEscapeString($ds[$field->name]) . '", ';
-						}
-					}
+							unset($row[$tableSchema->primaryKey]);
+							unset($fields[$i]);
+					}							
 				}
 
-				// rem last comma
-				$set_fields = substr( $set_fields, 0, strlen( $set_fields ) - 2 );
-				$set_values = substr( $set_values, 0, strlen( $set_values ) - 2 );
+				$this->queryBuilder()
+					->insertInto($ds->table, $fields)
+					->values($row)
+					->execute();
 
-				$sql = '
-					INSERT INTO `' . $ds->getProperty('table') . '`(' . $set_fields . ')
-					VALUES(' . $set_values . ')';
-
-				// insert record into source
-				$this->executeInternal( $sql );
-
-				// get primary key value
-				if( isset( $idkey_name ))
+				if($tableSchema->primaryKey)
 				{
-					$ds[$idkey_name] = $this->getLastInsertId();
+					$ds[$tableSchema->primaryKey] = (int)  $this->getLastInsertId();
+				
 				}
 			}
 			else
 			{
-				throw new \System\Base\InvalidOperationException("connection is closed");
+				throw new \System\DB\DataAdapterException("Connection is closed");
 			}
 		}
 
@@ -332,78 +586,39 @@
 		 * @param  DataSet	&$ds		reference to a DataSet
 		 * @return void
 		 */
-		final public function updateDataRecord( DataSet &$ds )
+		final public function update( \System\DB\DataSet &$ds  )
 		{
 			if( $this->link )
 			{
-				/**
-				 * connection to mysql database
-				 * attempt to update record in table using DataSet
-				 */
-				$set_vars = '';
-				$where	= '';
+				$tableSchema = $ds->dataAdapter->getSchema()->seek($ds->table);
+				$fields = $ds->fields;
+				$row = $ds->row;
 
-				// get reference to fieldset
-				$primarykeys = array();
-
-				// build sql string
-				foreach( $ds->fields as $field )
+				for($i=0; $i<count($ds->fieldMeta); $i++)
 				{
-					if( $field->primaryKey )
+					if( $ds->fieldMeta[$i]->name == $tableSchema->primaryKey)
 					{
-						$primarykey = array();
-						$primarykey['name']	= $field->name;
-						$primarykey['value'] = $field->value;
-						$primarykey['numeric'] = (bool) $field->numeric;
-						$primarykeys[] = $primarykey;
-					}
-
-					if( $ds[$field->name] === null )
-					{
-						$set_vars .= '`' . $field->name . '` = null, ';
-					}
-					elseif( $field->numeric )
-					{
-						$set_vars .= '`' . $field->name . '` = ' . (real)$ds[$field->name] . ', ';
-					}
-					else
-					{
-						$set_vars .= '`' . $field->name . '` = "' . $this->getEscapeString($ds[$field->name]) . '", ';
-					}
+							unset($row[$tableSchema->primaryKey]);
+							unset($fields[$i]);
+					}							
 				}
 
-				// rem last comma
-				$set_vars = substr( $set_vars, 0, strlen( $set_vars ) - 2 );
-
-				foreach( $primarykeys as $primarykey )
+				if($tableSchema->primaryKey)
 				{
-					if( $where )
-					{
-						$where .= "
-					AND ";
-					}
-
-					if( $primarykey['numeric'] )
-					{
-						$where .= "`{$primarykey['name']}` = " . (real) $primarykey['value'];
-					}
-					else
-					{
-						$where .= "`{$primarykey['name']}` = \"{$primarykey['value']}\"";
-					}
+					$this->queryBuilder()
+						->update($ds->table)
+						->setColumns($ds->table, $fields, $row)
+						->where($ds->table, $tableSchema->primaryKey, '=', $ds[$tableSchema->primaryKey])
+						->execute();
 				}
-
-				$sql = "
-					UPDATE `{$ds->getProperty('table')}`
-					SET {$set_vars}
-					WHERE {$where}";
-
-				// update source
-				$this->executeInternal( $sql );
+				else
+				{
+					throw new \System\DB\DataAdapterException("Cannot update record, no primary key is defined");
+				}
 			}
 			else
 			{
-				throw new \System\Base\InvalidOperationException("connection is closed");
+				throw new \System\DB\DataAdapterException("Connection is closed");
 			}
 		}
 
@@ -414,71 +629,40 @@
 		 * @param  DataSet	&$ds		reference to a DataSet
 		 * @return void
 		 */
-		final public function deleteDataRecord( DataSet &$ds )
+		final public function delete( \System\DB\DataSet &$ds  )
 		{
 			if( $this->link )
 			{
-				/**
-				 * connection to mysql database
-				 * attempt to delete record in table using DataSet
-				 */
-				$where = '';
-				$primarykeys = array();
+				$tableSchema = $ds->dataAdapter->getSchema()->seek($ds->table);
 
-				// get primary key
-				foreach( $dr->dataSet->fields as $field )
+				if($tableSchema->primaryKey)
 				{
-					if( $field->primaryKey )
-					{
-						$primarykey = array();
-						$primarykey['value']   = $ds[$field->name];
-						$primarykey['name']	= $field->name;
-						$primarykey['numeric'] = (bool) $field->numeric;
-						$primarykeys[] = $primarykey;
-					}
+					$this->queryBuilder()
+						->delete()
+						->from($ds->table)
+						->where($ds->table, $tableSchema->primaryKey, '=', $ds[$tableSchema->primaryKey])
+						->execute();
 				}
-
-				foreach( $primarykeys as $primarykey )
+				else
 				{
-					if( $where )
-					{
-						$where .= "
-					AND ";
-					}
-
-					if( $primarykey['numeric'] )
-					{
-						$where .= "`{$primarykey['name']}` = " . (real) $primarykey['value'];
-					}
-					else
-					{
-						$where .= "`{$primarykey['name']}` = \"{$primarykey['value']}\"";
-					}
+					throw new \System\DB\DataAdapterException("Cannot delete record, no primary key is defined");
 				}
-
-				$sql = "
-					DELETE FROM `{$ds->properties['table']}`
-					WHERE {$where}";
-
-				// delete record from source
-				$this->executeInternal( $sql );
 			}
 			else
 			{
-				throw new \System\Base\InvalidOperationException("connection is closed");
+				throw new \System\DB\DataAdapterException("Connection is closed");
 			}
 		}
 
 
 		/**
-		 * Executes a sql query or procedure on the current connection
+		 * creats a QueryBuilder object
 		 *
-		 * @param  string		$query		sql query
-		 * @return void
+		 * @return SQLQueryBuilder
 		 */
-		public function execute( $query )
+		public function queryBuilder()
 		{
-			$this->executeInternal( $query );
+			return new MSSQLQueryBuilder($this, $this->link, '[', ']', '\'');
 		}
 
 
@@ -487,82 +671,9 @@
 		 *
 		 * @return void
 		 */
-		public function begin()
+		public function beginTransation()
 		{
-			if( $this->link )
-			{
-				sqlsrv_begin_transaction( $this->link );
-			}
-			else
-			{
-				throw new \System\Base\InvalidOperationException("mssql resource is not a valid link identifier");
-			}
-		}
-
-
-		/**
-		 * rollback transaction
-		 *
-		 * @return void
-		 */
-		public function rollback()
-		{
-			if( $this->link )
-			{
-				sqlsrv_rollback( $this->link );
-			}
-			else
-			{
-				throw new \System\Base\InvalidOperationException("mssql resource is not a valid link identifier");
-			}
-		}
-
-
-		/**
-		 * commit transaction
-		 *
-		 * @return void
-		 */
-		public function commit()
-		{
-			if( $this->link )
-			{
-				sqlsrv_commit( $this->link );
-			}
-			else
-			{
-				throw new \System\Base\InvalidOperationException("mssql resource is not a valid link identifier");
-			}
-		}
-
-
-		/**
-		 * set foreign key checks
-		 *
-		 * @param  bool	 $set		set/unset foreign key checks
-		 * @return void
-		 */
-		final public function setForeignKeyChecks( $set )
-		{
-			if((bool)$set)
-			{
-				$this->executeInternal( 'SET FOREIGN_KEY_CHECKS=1;' );
-			}
-			else
-			{
-				$this->executeInternal( 'SET FOREIGN_KEY_CHECKS=0;' );
-			}
-		}
-
-
-		/**
-		 * returns a DataSet of tables
-		 *
-		 * @return DataSet
-		 */
-		public function getTables()
-		{
-			return $this->openDataSet( "SHOW TABLES FROM [{$this->args['database']}]" );
+			return new \System\DB\MySQL\MSSQLTransaction($this);
 		}
 
 
@@ -573,7 +684,15 @@
 		 */
 		public function getLastInsertId()
 		{
-			throw new \System\Base\InvalidOperationException("mssql resource is not a valid link identifier");
+			if($this->link)
+			{
+				$id = \sqlsrv_fetch_array($this->query("SELECT  @@Identity"));
+				return $id[0];
+			}
+			else
+			{				
+				throw new \System\Base\InvalidOperationException("mssql resource is not a valid link identifier");
+			}	
 		}
 
 
@@ -596,362 +715,60 @@
 
 
 		/**
-		 * Executes a sql query or procedure on the current connection
-		 *
-		 * @param  string		$query		sql query
-		 * @return resource					mysql resultset
-		 */
-		protected function executeInternal( $query )
-		{
-			$sql = '';
-			if( $query instanceof QueryBuilder )
-			{
-				$sql = $this->getQuery( $query );
-			}
-			else
-			{
-				$sql = $query;
-			}
-
-			if( $this->link )
-			{
-				// start timer
-				$timer = new \System\Utils\Timer(true);
-				$this->lastQuery = $sql;
-				$this->lastQueryTime = 0;
-
-				$link = sqlsrv_query( $this->link, $sql );
-
-				if( !$link )
-				{
-					throw new SQLException(implode(' ', array_pop(sqlsrv_errors())));
-				}
-
-				// end time
-				$this->lastQueryTime = $timer->elapsed();
-				$this->queryCount++;
-				$this->queryTime += $this->lastQueryTime;
-
-				return $link;
-			}
-			else
-			{
-				throw new \System\Base\InvalidOperationException("mysql resource in not a valid link identifier");
-			}
-		}
-
-
-		/**
-		 * Returns SQL based on the QueryBuilder
-		 *
-		 * @param  QueryBuilder		$queryBuilder	QueryBuilder object
-		 * @return string							SQL query
-		 */
-		final protected function getQuery( QueryBuilder $queryBuilder ) {
-
-			// select
-			if( $queryBuilder->getStatement() === 'select' ) {
-				$sql = 'select';
-
-				// columns
-				$columns = '';
-				foreach( $queryBuilder->getColumns() as $column ) {
-
-					if( strlen( $columns ) > 0 ) {
-						$columns .= '
-	, ';
-					}
-					else {
-						$columns = ' ';
-					}
-
-					if( $column['table'] === '*' ) {
-						$columns .= '*';
-					}
-					else {
-						$columns .= '`' . $column['table'] . '`';
-
-						if( $column['column'] === '*' ) {
-							$columns .= '.*';
-						}
-						else {
-							$columns .= '.`' . $column['column'] . '`';
-							$columns .= ' as `' . $column['alias'] . '`';
-						}
-					}
-				}
-
-				$sql .= isset( $columns )?$columns:'';
-
-				// from
-				$tables = '';
-				foreach( $queryBuilder->getTables() as $table ) {
-					if( strlen( $tables ) > 0 ) {
-						$tables .= '
-	, `' . $table['table'] . '`' . ' as `' . $table['alias'] . '`';
-					}
-					else {
-						$tables = '
-	from `' . $table['table'] . '`' . ' as `' . $table['alias'] . '`';
-					}
-				}
-
-				$sql .= isset( $tables )?$tables:'';
-			}
-
-			// insert
-			elseif( $queryBuilder->getStatement() === 'insert' ) {
-				$sql = 'insert';
-
-				$tables = $queryBuilder->getTables();
-
-				$sql .= '
-	into `' . $tables[0]['table'] . '` (';
-
-				// columns
-				$columns = '';
-				foreach( $queryBuilder->getColumns() as $column ) {
-					if( strlen( $columns ) > 0 ) {
-						$columns .= ',`' . $column['column'] . '`';
-					}
-					else {
-						$columns = '`' . $column['column'] . '`';
-					}
-				}
-
-				$sql .= isset( $columns )?$columns:'';
-				$sql .= ')';
-
-				$sql .= '
-	values(';
-
-				// values
-				$values = '';
-				foreach( $queryBuilder->getValues() as $value ) {
-					if( strlen( $values ) > 0 ) {
-						$values .= ',';
-					}
-					else {
-						$values = '';
-					}
-					if( is_null( $value )) {
-						$values .= 'null';
-					}
-					elseif( is_bool( $value )) {
-						$values .= $value?'true':'false';
-					}
-					elseif( is_int( $value )) {
-						$values .= (int)$value;
-					}
-					elseif( is_float( $value )) {
-						$values .= (real)$value;
-					}
-					else {
-						$values .= '"' . $this->getEscapeString( $value ) . '"';
-					}
-				}
-
-				$sql .= $values . ')';
-			}
-
-			// update
-			elseif( $queryBuilder->getStatement() === 'update' ) {
-				$sql = 'update';
-
-				$tables = $queryBuilder->getTables();
-				$sql .= ' `' . $tables[0]['table'] . '`';
-
-				// set
-				$columns = $queryBuilder->getColumns();
-				$values = $queryBuilder->getValues();
-				$setClause = '';
-				for( $i = 0; $i < count( $columns ); $i++ ) {
-					if( strlen( $setClause ) > 0 ) {
-						$setClause .= '
-	, ';
-					}
-					else {
-						$setClause = '
-set ';
-					}
-
-					if( is_null( $values[$i] )) {
-						$setClause .= '`' . $columns[$i]['table'] . '`.`' . $columns[$i]['column'] . '` = null';
-					}
-					elseif( is_bool( $values[$i] )) {
-						$setClause .= '`' . $columns[$i]['table'] . '`.`' . $columns[$i]['column'] . '` = ' . ($values[$i]?'true':'false');
-					}
-					elseif( is_int( $values[$i] )) {
-						$setClause .= '`' . $columns[$i]['table'] . '`.`' . $columns[$i]['column'] . '` = ' . (int)$values[$i];
-					}
-					elseif( is_float( $values[$i] )) {
-						$setClause .= '`' . $columns[$i]['table'] . '`.`' . $columns[$i]['column'] . '` = ' . (real)$values[$i];
-					}
-					else {
-						$setClause .= '`' . $columns[$i]['table'] . '`.`' . $columns[$i]['column'] . '` = "' . $this->getEscapeString( $values[$i] ) . '"';
-					}
-				}
-
-				$sql .= isset( $setClause )?$setClause:'';
-			}
-
-			// delete
-			elseif( $queryBuilder->getStatement() === 'delete' ) {
-				$sql = 'delete';
-
-				// from
-				$tables = '';
-				foreach( $queryBuilder->getTables() as $table ) {
-					if( strlen( $tables ) > 0 ) {
-						$tables .= '
-	, `' . $table['table'] . '`';
-					}
-					else {
-						$tables = '
-	from `' . $table['table'] . '`';
-					}
-				}
-
-				$sql .= isset( $tables )?$tables:'';
-			}
-
-			// joins
-			foreach( $queryBuilder->getJoins() as $join ) {
-				$sql .= '
-' . $join['type'] . '
-	join `' . $join['lefttable'] . '` as `' . $join['alias'] . '`
-		on `' . $join['alias'] . '`.`' . $join['leftcolumn'] . '` = `' . $join['righttable'] . '`.`' . $join['rightcolumn'] . '`';
-
-
-			}
-
-			// where
-			$whereClause = '';
-			foreach( $queryBuilder->getWhereClauses() as $where ) {
-				if( strlen( $whereClause ) > 0 ) {
-					$whereClause .= '
-and';
-				}
-				else {
-					$whereClause = '
-where';
-				}
-				if( is_null( $where['value'] )) {
-					$whereClause .= '
-	`' . $where['table'] . '`.`' . $where['column'] . '` is null';
-				}
-				elseif( is_bool( $where['value'] )) {
-					$whereClause .= '
-	`' . $where['table'] . '`.`' . $where['column'] . '` = ' . ($where['value']?'true':'false');
-				}
-				elseif( is_int( $where['value'] )) {
-					$whereClause .= '
-	`' . $where['table'] . '`.`' . $where['column'] . '` ' . $where['operand'] . ' ' . (int)$where['value'] . '';
-				}
-				elseif( is_float( $where['value'] )) {
-					$whereClause .= '
-	`' . $where['table'] . '`.`' . $where['column'] . '` ' . $where['operand'] . ' ' . (real)$where['value'] . '';
-				}
-				else {
-					$whereClause .= '
-	`' . $where['table'] . '`.`' . $where['column'] . '` ' . $where['operand'] . ' "' . $this->getEscapeString( $where['value'] ) . '"';
-				}
-			}
-
-			if( $queryBuilder->empty ) {
-				if( strlen( $whereClause ) === 0 ) {
-					$whereClause = '
-where
-	0';
-				}
-			}
-
-			$sql .= isset( $whereClause )?$whereClause:'';
-
-			// orderby
-			$orderByClause = '';
-			foreach( $queryBuilder->getOrderByClauses() as $orderby ) {
-				if( strlen( $orderByClause ) > 0 ) {
-					$orderByClause .= '
-	, `' . $orderby['table'] . '`.`' . $orderby['column'] . '` ' . $orderby['direction'];
-				}
-				else {
-					$orderByClause = '
-order
-	by `' . $orderby['table'] . '`.`' . $orderby['column'] . '` ' . $orderby['direction'];
-				}
-			}
-
-			$sql .= isset( $orderByClause )?$orderByClause:'';
-
-			// groupby
-			$groupByClause = '';
-			foreach( $queryBuilder->getGroupByClauses() as $groupby ) {
-				if( strlen( $groupByClause ) > 0 ) {
-					$groupByClause .= '
-	, `' . $groupby['table'] . '`.`' . $groupby['column'] . '`';
-				}
-				else {
-					$groupByClause = '
-group
-	by `' . $groupby['table'] . '`.`' . $groupby['column'] . '`';
-				}
-			}
-
-			$sql .= isset( $groupByClause )?$groupByClause:'';
-
-			// having
-			$havingClause = '';
-			foreach( $queryBuilder->getHavingClauses() as $having ) {
-				if( strlen( $havingClause ) > 0 ) {
-					$havingClause .= '
-and';
-				}
-				else {
-					$havingClause = '
-having';
-				}
-				$havingClause .= '
-	`' . $having['column'] . '` ' . $having['operand'] . ' "' . $this->getEscapeString( $having['value'] ) . '"';
-			}
-
-			$sql .= isset( $havingClause )?$havingClause:'';
-
-			return $sql;
-		}
-
-
-		/**
 		 * Returns escaped string
 		 *
-		 * @param  string		$unescaped_string   String to escape
-		 * @return string							SQL query
+		 * @param  string $unescaped_string		String to escape
+		 * @return string						Escaped string
 		 */
-		protected function getEscapeString( $unescaped_string ) {
-			return mysql_real_escape_string( $unescaped_string, $this->link );
+		public function escapeString( $unescaped_string )
+		{
+			if(is_numeric($unescaped_string)) {
+				return $unescaped_string;
+			}
+			elseif(strtotime($unescaped_string)!==false) {
+				return $unescaped_string;
+			}
+			$unpacked = unpack('H*hex', $unescaped_string);
+			return '0x' . $unpacked['hex'];
 		}
 
-private function getTableFromSQL($sql){
-$posStart = stripos($sql,'from');
-while(!$this->removeWhitespace($sql,$posStart) && $posStart < strlen($sql)){
-$posStart++;
-}
-$posEnd = $posStart + 1;
-while(!$this->removeWhitespace($sql,$posEnd) && $posEnd < strlen($sql)){
-$posEnd++;
-}
 
-$table = substr($sql,$posStart,$posEnd - $posStart + 1);
+		/**
+		 * 
+		 * @param type $sql
+		 * @return type
+		 */
+		private function getTableFromSQL($sql)
+		{
+			if($sql instanceof MSSQLStatement) $sql = $sql->getPreparedStatement();
+			$posStart = stripos($sql,'from');
+			while(!$this->removeWhitespace($sql,$posStart) && $posStart < strlen($sql)){
+			$posStart++;
+			}
+			$posEnd = $posStart + 1;
+			while(!$this->removeWhitespace($sql,$posEnd) && $posEnd < strlen($sql)){
+			$posEnd++;
+			}
 
-$table = rtrim(ltrim(str_replace('[','',str_replace(']','',$table))));
+			$table = substr($sql,$posStart,$posEnd - $posStart + 1);
 
-return $table;
-}
+			$table = rtrim(ltrim(str_replace('[','',str_replace(']','',$table))));
+
+			return $table;
+		}
 
 
+		/**
+		 * 
+		 * @param type $table
+		 * @param type $fieldName
+		 * @return type
+		 */
 		private function getField($table, $fieldName)
 		{
-			$sql = "select c.status as status, case when pc.colid = c.colid then '1' else '' end as xtype, case when systypes.name = 'uniqueidentifier' then 1 else 0 end as guid
+			$sql = "select  c.status as status, 
+							case when pc.colid = c.colid then '1' else '' end as xtype, 
+							case when systypes.name = 'uniqueidentifier' then 1 else 0 end as guid
 											from sysobjects o
 											left join (sysindexes i
 												join sysobjects pk ON i.name = pk.name
@@ -965,32 +782,37 @@ return $table;
 											left join systypes on c.xusertype = systypes.xusertype
 											where o.name = '".$table."'
 											AND c.name = '".$fieldName."'
-											order by ik.keyno
-		";
+											order by ik.keyno";
 
-			$link = $this->executeInternal( $sql );
-			$result = sqlsrv_fetch( $link );
-dmp($result,0);
-dmp($fieldName,0);
-			$field = new \System\DB\DataField();
-			$field->name = $fieldName;
-			$field->table = $table;
-			$field->autoIncrement = ($result[0] & 128) == 128;
-			$field->primaryKey = ($result[1] == '1');
+			$link = $this->query( $sql );
+			$result = sqlsrv_fetch_array( $link );
+
+			$field = array();
+			$field['name'] = $fieldName;
+			$field['table'] = $table;
+			$field['autoIncrement'] = ($result[0] & 128) == 128;
+			$field['primaryKey'] = ($result[1] == '1');
+			$field['unique'] = ($result[2] == '1');
 
 			return $field;
 		}
 
 
-
-	private function removeWhitespace($string,$start){
-		if($start >= strlen($string)){
-			return false;
-		}
-		return substr($string,$start,1)==' ' ||
+		/**
+		 * 
+		 * @param type $string
+		 * @param type $start
+		 * @return boolean
+		 */
+		private function removeWhitespace($string,$start)
+		{
+			if($start >= strlen($string)) {
+				return false;
+			}
+			return substr($string,$start,1)==' ' ||
 				substr($string,$start,1)=="\t" ||
 				substr($string,$start,1)=="\n" ||
 				substr($string,$start,1)=="\r";
-	}
+		}
 	}
 ?>

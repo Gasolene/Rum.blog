@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -11,44 +11,30 @@
 	/**
 	 * Provides base functionality for Input Controls
 	 *
-	 * @property string $defaultHTMLControlId Specifies the id of the default html control
-	 * @property string $dataField Name of the data field in the datasource
+	 * @property bool $autoFocus specifies whether to auto focus
 	 * @property bool $autoPostBack Specifies whether form will perform postback on change, Default is false
 	 * @property bool $ajaxPostBack specifies whether to perform ajax postback on change, Default is false
-	 * @property bool $ajaxValidation specifies whether to perform ajax validation, Default is false
+	 * @property bool $ajaxStartHandler specifies the optional ajax start handler
+	 * @property bool $ajaxCompletionHandler specifies the optional ajax completion handler
 	 * @property bool $readonly Specifies whether control is readonly
 	 * @property bool $disabled Specifies whether the control is disabled
-	 * @property string $label Specifies control label
 	 * @property string $tooltip Specifies control tooltip
-	 * @property int $tabIndex Specifies the tab order if the control
-	 * @property string $value Gets or sets value of control
 	 * @property bool $submitted Specifies whether the data has been submitted
 	 * @property bool $changed Specifies whether the data has been changed
-	 * @property array $validators Array of validators
+	 * @property bool $disableAutoComplete Specifies whether to disable the browsers auto complete feature
+	 * @property string $placeholder Specifies the text for the placeholder attribute
 	 *
 	 * @package			PHPRum
 	 * @subpackage		Web
 	 * @author			Darnell Shinbine
 	 */
-	abstract class InputBase extends WebControlBase
+	abstract class InputBase extends DataFieldControlBase
 	{
 		/**
-		 * specifies whether the server control persists its view state, Default is true
+		 * turn on or off auto focusing
 		 * @var bool
 		 */
-		protected $enableViewState			= false;
-
-		/**
-		 * specifies the id of the default html control
-		 * @var string
-		 */
-		protected $defaultHTMLControlId		= "";
-
-		/**
-		 * Name of the data field in the datasource
-		 * @var string
-		 */
-		protected $dataField				= '';
+		protected $autoFocus				= false;
 
 		/**
 		 * Specifies whether form will submit postback on change, Default is false
@@ -63,10 +49,16 @@
 		protected $ajaxPostBack				= false;
 
 		/**
-		 * Specifies whether form will submit ajax validation, Default is false
-		 * @var bool
+		 * specifies the optional ajax start handler
+		 * @var string
 		 */
-		protected $ajaxValidation			= false;
+		public $ajaxStartHandler			= 'null';
+
+		/**
+		 * specifies the optional ajax completion handler
+		 * @var string
+		 */
+		public $ajaxCompletionHandler		= 'null';
 
 		/**
 		 * Specifies whether the control is readonly, Default is false
@@ -81,28 +73,10 @@
 		protected $disabled					= false;
 
 		/**
-		 * Specifies control label
-		 * @var string
-		 */
-		protected $label					= '';
-
-		/**
 		 * specifies control tool tip
 		 * @var string
 		 */
 		protected $tooltip					= '';
-
-		/**
-		 * Specifies the tab order if the control
-		 * @var int
-		 */
-		protected $tabIndex					= 0;
-
-		/**
-		 * Gets or sets value of control
-		 * @var string
-		 */
-		protected $value					= null;
 
 		/**
 		 * Specifies whether the data has been submitted
@@ -123,10 +97,28 @@
 		protected $validators				= null;
 
 		/**
-		 * instance of the Form object
-		 * @var Form
+		 * Specifies control label
+		 * @ignore
 		 */
-		private $_form						= null;
+		protected $label					= '';
+
+		/**
+		 * Specifies whether to disable the browsers auto complete feature
+		 * @var bool
+		 */
+		protected $disableAutoComplete		= false;
+
+		/**
+		 * Specifies the text for the placeholder attribute
+		 * @var string
+		 */
+		protected $placeholder				= '';
+
+		/**
+		 * specifies the id of the default html control
+		 * @ignore
+		 */
+		protected $defaultHTMLControlId		= "";
 
 
 		/**
@@ -141,11 +133,9 @@
 		 */
 		public function __construct( $controlId, $default = null )
 		{
-			parent::__construct( $controlId );
+			parent::__construct( $controlId, $default );
 
-			$this->value       = $default;
-			$this->label       = str_replace( '_', ' ', \ucwords( $controlId ));
-			$this->dataField   = $controlId;
+			$this->label       = str_replace( '_', ' ', \ucwords( $controlId )); // Deprecated
 			$this->validators  = new \System\Validators\ValidatorCollection($this);
 
 			// event handling
@@ -191,16 +181,19 @@
 		 */
 		public function __get( $field ) {
 			if( $field === 'defaultHTMLControlId' ) {
+				trigger_error("InputBase::defaultHTMLControlId is deprecated", E_USER_DEPRECATED);
 				return $this->defaultHTMLControlId;
 			}
-			elseif( $field === 'dataField' ) {
-				return $this->dataField;
-			}
 			elseif( $field === 'onPost' ) {
+				trigger_error("InputBase::onPost is deprecated", E_USER_DEPRECATED);
 				return $this->onPost;
 			}
 			elseif( $field === 'onChange' ) {
+				trigger_error("InputBase::onChange is deprecated", E_USER_DEPRECATED);
 				return $this->onChange;
+			}
+			elseif( $field === 'autoFocus' ) {
+				return $this->autoFocus;
 			}
 			elseif( $field === 'autoPostBack' ) {
 				return $this->autoPostBack;
@@ -208,8 +201,17 @@
 			elseif( $field === 'ajaxPostBack' ) {
 				return $this->ajaxPostBack;
 			}
-			elseif( $field === 'ajaxValidation' ) {
-				return $this->ajaxValidation;
+			elseif( $field === 'ajaxStartHandler' ) {
+				return $this->ajaxStartHandler;
+			}
+			elseif( $field === 'ajaxCompletionHandler' ) {
+				return $this->ajaxCompletionHandler;
+			}
+			elseif( $field === 'disableAutoComplete' ) {
+				return $this->disableAutoComplete;
+			}
+			elseif( $field === 'placeholder' ) {
+				return $this->placeholder;
 			}
 			elseif( $field === 'readonly' ) {
 				return $this->readonly;
@@ -224,19 +226,14 @@
 				return $this->tooltip;
 			}
 			elseif( $field === 'tabIndex' ) {
-				return $this->tabIndex;
-			}
-			elseif( $field === 'value' ) {
-				return $this->value;
+				trigger_error("InputBase::tabIndex is deprecated", E_USER_DEPRECATED);
+				return 0;
 			}
 			elseif( $field === 'submitted' ) {
 				return $this->submitted;
 			}
 			elseif( $field === 'changed' ) {
 				return $this->changed;
-			}
-			elseif( $field === 'validators' ) {
-				return $this->validators;
 			}
 			else {
 				return parent::__get($field);
@@ -253,14 +250,16 @@
 		 * @ignore
 		 */
 		public function __set( $field, $value ) {
-			if( $field === 'dataField' ) {
-				$this->dataField = (string)$value;
-			}
-			elseif( $field === 'onPost' ) {
+			if( $field === 'onPost' ) {
+				trigger_error("InputBase::onPost is deprecated", E_USER_DEPRECATED);
 				$this->onPost = (string)$value;
 			}
 			elseif( $field === 'onChange' ) {
+				trigger_error("InputBase::onChange is deprecated", E_USER_DEPRECATED);
 				$this->onChange = (string)$value;
+			}
+			elseif( $field === 'autoFocus' ) {
+				$this->autoFocus = (bool)$value;
 			}
 			elseif( $field === 'autoPostBack' ) {
 				$this->autoPostBack = (bool)$value;
@@ -268,8 +267,20 @@
 			elseif( $field === 'ajaxPostBack' ) {
 				$this->ajaxPostBack = (bool)$value;
 			}
+			elseif( $field === 'ajaxStartHandler' ) {
+				$this->ajaxStartHandler = (string)$ajaxStartHandler;
+			}
+			elseif( $field === 'ajaxCompletionHandler' ) {
+				$this->ajaxCompletionHandler = (string)$ajaxCompletionHandler;
+			}
 			elseif( $field === 'ajaxValidation' ) {
-				$this->ajaxValidation = (bool)$value;
+				trigger_error("InputBase::ajaxValidation is deprecated, use ValidationMessage instead", E_USER_DEPRECATED);
+			}
+			elseif( $field === 'disableAutoComplete' ) {
+				$this->disableAutoComplete = (bool)$value;
+			}
+			elseif( $field === 'placeholder' ) {
+				$this->placeholder = (string)$value;
 			}
 			elseif( $field === 'readonly' ) {
 				$this->readonly = (bool)$value;
@@ -278,16 +289,14 @@
 				$this->disabled = (bool)$value;
 			}
 			elseif( $field === 'label' ) {
+				trigger_error("InputBase::label is deprecated", E_USER_DEPRECATED);
 				$this->label = (string)$value;
 			}
 			elseif( $field === 'tooltip' ) {
 				$this->tooltip = (string)$value;
 			}
 			elseif( $field === 'tabIndex' ) {
-				$this->tabIndex = (int)$value;
-			}
-			elseif( $field === 'value' ) {
-				$this->value = $value;
+				trigger_error("InputBase::tabIndex is deprecated", E_USER_DEPRECATED);
 			}
 			else {
 				parent::__set( $field, $value );
@@ -299,10 +308,12 @@
 		 * sets focus to the control
 		 *
 		 * @return bool			True if changed
+		 * @ignore
 		 */
 		final public function focus()
 		{
-			$this->getParentByType( '\System\Web\WebControls\Page' )->onload .= 'document.getElementById(\'' . $this->defaultHTMLControlId . '\').focus();';
+			trigger_error("InputBase::focus() is deprecated", E_USER_DEPRECATED);
+			$this->getParentByType( '\System\Web\WebControls\Page' )->onload .= 'Rum.id(\'' . $this->defaultHTMLControlId . '\').focus();';
 		}
 
 
@@ -314,31 +325,38 @@
 		 */
 		public function addValidator(\System\Validators\ValidatorBase $validator)
 		{
+			$validator->field = $this->dataField;
 			$this->validators->add($validator);
 		}
 
 
 		/**
-		 * validates control data, returns true on success
+		 * validates control against validators, returns true on success
 		 *
 		 * @param  string		$errMsg		error message
 		 * @return bool						true if control value is valid
 		 */
-		public function validate(&$errMsg = '', InputBase &$controlToFocus = null)
+		public function validate(&$errMsg = '')
 		{
 			$fail = false;
 			if(!$this->disabled)
 			{
 				foreach($this->validators as $validator)
 				{
-					if(!$validator->validate())
+					if($validator instanceof \System\Validators\CompareValidator)
 					{
-						if(is_null($controlToFocus))
+						if(!$validator->compare($this->value, $this->parent->{$validator->fieldToCompare}->value))
 						{
-							$controlToFocus = $this;
+							$fail = true;
+							if($errMsg) $errMsg .= ", ";
+							$errMsg .= $validator->errorMessage;
 						}
+					}
+					elseif(!$validator->validate($this->value))
+					{
 						$fail = true;
-						$errMsg .= $validator->errorMessage . \System\Base\CARAGERETURN;
+						if($errMsg) $errMsg .= ", ";
+						$errMsg .= $validator->errorMessage;
 					}
 				}
 			}
@@ -355,6 +373,7 @@
 		 */
 		public function error( array $args = array() )
 		{
+			trigger_error("InputBase::error() is deprecated, user ErrorMessage instead", E_USER_DEPRECATED);
 			\System\Web\HTTPResponse::write( $this->fetchError( $args ));
 		}
 
@@ -373,7 +392,15 @@
 				$this->validate($errMsg);
 			}
 
-			return "<span id=\"{$this->getHTMLControlIdString()}__err\" class=\"err_msg\" style=\"".(!$errMsg?'display:none;':'')."\"><span>{$errMsg}</span></span>";
+			$domObject = new \System\XML\DomObject('span');
+			$domObject->setAttribute('id', $this->getHTMLControlId().'__err');
+//			$domObject->setAttribute('class', 'warning');
+			if(!$errMsg) {
+				$domObject->setAttribute('style', 'display:none;');
+			}
+			$domObject->innerHtml = "<span>{$errMsg}</span>";
+			return $domObject->fetch($args);
+//			return "<span id=\"{$this->getHTMLControlId()}__err\" style=\"".(!$errMsg?'display:none;':'')."\"><span>{$errMsg}</span></span>";
 		}
 
 
@@ -389,39 +416,6 @@
 
 
 		/**
-		 * update data source with Control value
-		 *
-		 * @param  \ArrayAccess $ds data source to fill
-		 * @return void
-		 */
-		final public function fillDataSource( \ArrayAccess &$ds )
-		{
-			if( isset( $ds[$this->dataField] ))
-			{
-				$ds[$this->dataField] = $this->value;
-			}
-		}
-
-
-		/**
-		 * update Control value with data from the data source
-		 *
-		 * @param  \ArrayAccess $ds data source to read
-		 * @return void
-		 */
-		final public function readDataSource( \ArrayAccess &$ds )
-		{
-			if( isset( $ds[$this->dataField] ))
-			{
-				if(!is_null($ds[$this->dataField]))
-				{
-					$this->value = $ds[$this->dataField];
-				}
-			}
-		}
-
-
-		/**
 		 * returns an input DomObject representing control
 		 *
 		 * @return DomObject
@@ -429,31 +423,28 @@
 		protected function getInputDomObject()
 		{
 			$input = $this->createDomObject( 'input' );
-			$input->setAttribute( 'name', $this->getHTMLControlIdString() );
-			$input->setAttribute( 'id', $this->getHTMLControlIdString() );
+			$input->setAttribute( 'name', $this->getHTMLControlId() );
+			$input->setAttribute( 'id', $this->getHTMLControlId() );
 			$input->setAttribute( 'title', $this->tooltip );
+
+			if( $this->autoFocus )
+			{
+				$input->setAttribute( 'autofocus', 'autofocus' );
+			}
 
 			if( $this->submitted && !$this->validate() )
 			{
-				$input->appendAttribute( 'class', ' invalid' );
+				$input->setAttribute( 'class', ' invalid' );
 			}
 
 			if( $this->autoPostBack )
 			{
-				$input->appendAttribute( 'onchange', 'document.getElementById(\''.$this->getParentByType( '\System\Web\WebControls\Form')->getHTMLControlIdString().'\').submit();' );
+				$input->setAttribute( 'onchange', 'Rum.id(\''.$this->getParentByType( '\System\Web\WebControls\Form')->getHTMLControlId().'\').submit();' );
 			}
 
 			if( $this->ajaxPostBack )
 			{
-				$input->appendAttribute( 'onchange', $this->ajaxHTTPRequest . ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'=\'+this.value+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' );' );
-			}
-
-			if( $this->ajaxValidation )
-			{
-				$input->appendAttribute( 'onfocus', 'PHPRum.resetValidationTimer('.__VALIDATION_TIMEOUT__.');' );
-				$input->appendAttribute( 'onchange', $this->ajaxHTTPRequest .                                     ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'__validate=1&'.$this->getHTMLControlIdString().'=\'+this.value+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' );' );
-				$input->appendAttribute( 'onkeyup',  'if(PHPRum.isValidationReady() && PHPRum.hasText(document.getElementById(\''.$this->getHTMLControlIdString().'__err\'))){' . $this->ajaxHTTPRequest . ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'__validate=1&'.$this->getHTMLControlIdString().'=\'+this.value+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' ); PHPRum.resetValidationTimer('.__VALIDATION_TIMEOUT__.');}' );
-				$input->appendAttribute( 'onblur',  $this->ajaxHTTPRequest .                                      ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'__validate=1&'.$this->getHTMLControlIdString().'=\'+this.value+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' ); PHPRum.resetValidationTimer('.__VALIDATION_TIMEOUT__.');' );
+				$input->setAttribute( 'onchange', 'Rum.evalAsync(\'' . $this->ajaxCallback . '\',\'' . $this->getHTMLControlId().'=\'+encodeURIComponent(this.value)+\'&'.$this->getRequestData().'\',\'POST\','.\addslashes($this->ajaxStartHandler).','.\addslashes($this->ajaxCompletionHandler).');' );
 			}
 
 			if( $this->readonly )
@@ -469,6 +460,16 @@
 			if( !$this->visible )
 			{
 				$input->setAttribute( 'type', 'hidden' );
+			}
+
+			if( $this->disableAutoComplete )
+			{
+				$input->setAttribute( 'autocomplete', 'off' );
+			}
+
+			if( $this->placeholder )
+			{
+				$input->setAttribute( 'placeholder', $this->placeholder );
 			}
 
 			return $input;
@@ -494,39 +495,24 @@
 
 
 		/**
-		 * bind control to datasource
-		 * gets record from dataobject and sets the control value to datafield value
-		 *
-		 * @return bool			true if successfull
-		 */
-		protected function onDataBind()
-		{
-			if( isset( $this->dataSource[$this->dataField] ))
-			{
-				$this->value = $this->dataSource[$this->dataField];
-			}
-		}
-
-
-		/**
 		 * called when control is initiated
 		 *
 		 * @return void
 		 */
 		protected function onInit()
 		{
-			$this->defaultHTMLControlId = $this->getHTMLControlIdString();
+			$this->defaultHTMLControlId = $this->getHTMLControlId();
 		}
 
 
 		/**
-		 * called when control is loaded
+		 * handle load events
 		 *
 		 * @return void
 		 */
 		protected function onLoad()
 		{
-			$this->_form = $this->getParentByType( '\System\Web\WebControls\Form' );
+			$this->validators->load();
 		}
 
 
@@ -544,28 +530,34 @@
 				{
 					$this->submitted = true;
 				}
-				elseif( isset( $request[$this->getHTMLControlIdString()] ))
+				elseif( isset( $request[$this->getHTMLControlId()] ))
 				{
 					// submitted
 					$this->submitted = true;
 
 					// changed
-					if( $this->value != $request[$this->getHTMLControlIdString()] )
+					if( $this->value != $request[$this->getHTMLControlId()] )
 					{
 						$this->changed = true;
 					}
 
 					// setvalue
-					$this->value = $request[$this->getHTMLControlIdString()];
-					unset( $request[$this->getHTMLControlIdString()] );
+					$this->value = $request[$this->getHTMLControlId()];
+					unset( $request[$this->getHTMLControlId()] );
 				}
 			}
 
-			if(( $this->ajaxPostBack || $this->ajaxValidation ) && $this->submitted )
-			{
-				$this->validate($errMsg);
-				$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("if(document.getElementById('{$this->getHTMLControlIdString()}__err')){PHPRum.setText(document.getElementById('{$this->getHTMLControlIdString()}__err'), '".\addslashes($errMsg)."')}");
-			}
+//			if(( $this->ajaxPostBack || $this->ajaxValidation ) && $this->submitted )
+//			{
+//				if($this->validate($errMsg))
+//				{
+//					$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("Rum.clear('{$this->getHTMLControlId()}');");
+//				}
+//				else
+//				{
+//					$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("Rum.assert('{$this->getHTMLControlId()}', '".\addslashes($errMsg)."');");
+//				}
+//			}
 		}
 
 
@@ -621,7 +613,7 @@
 		 */
 		protected function onUpdateAjax()
 		{
-			$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("document.getElementById('{$this->getHTMLControlIdString()}').value='$this->value';");
+			$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("Rum.id('{$this->getHTMLControlId()}').value='$this->value';");
 		}
 	}
 ?>

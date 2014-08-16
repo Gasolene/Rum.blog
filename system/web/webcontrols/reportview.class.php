@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -254,14 +254,7 @@
 		 */
 		protected function onDataBind()
 		{
-			if( $this->dataSource instanceof \System\DB\DataSet )
-			{
-				$this->_data = clone $this->dataSource;
-			}
-			else
-			{
-				throw new \System\Base\InvalidArgumentException("Argument 1 passed to ".get_class($this)."::bind() must be an object of type DataSet");
-			}
+			$this->_data = clone $this->dataSource;
 		}
 
 

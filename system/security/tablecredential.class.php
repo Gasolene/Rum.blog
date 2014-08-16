@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Security;
 
@@ -41,6 +41,10 @@
 					if( $this->comparePassword( $ds[$this->credential['password-field']], $password, isset($this->credential['salt-field'])?$ds[$this->credential['salt-field']]:'' )) {
 						if( $this->checkFailedCount( $ds )) {
 							if( $this->checkAccountActive( $ds )) {
+
+								// Raise event
+								\System\Base\ApplicationBase::getInstance()->events->raise(new \System\Base\Events\AuthenticateEvent(), $this, $ds->row);
+
 								// Success!
 								return new AuthenticationStatus();
 							}
@@ -62,6 +66,37 @@
 			}
 
 			return new AuthenticationStatus(true);
+		}
+
+
+		/**
+		 * checks if uid is authorized based on the credential
+		 *
+		 * @param   string	$username	specifies username
+		 * @return  bool
+		 */
+		public function authorize( $username )
+		{
+			// connect to data source
+			$da = null;
+			if( isset( $this->credential['dsn'] )) {
+				$da = \System\DB\DataAdapter::create( $this->credential['dsn'] );
+			}
+			else {
+				$da = \System\Base\ApplicationBase::getInstance()->dataAdapter;
+			}
+
+			$ds = $da->openDataSet( $this->credential['source'] );
+			if( $ds ) {
+				if( $ds->seek( $this->credential['username-field'], (string)$username, true )) {
+					if( $this->checkAccountActive( $ds )) {
+						// Success!
+						return true;
+					}
+				}
+			}
+
+			return false;
 		}
 
 
@@ -116,7 +151,7 @@
 			{
 				if($ds[$this->credential['attemptwindowexpires-field']] > time())
 				{
-					if($ds[$this->credential['failedattemptcount-field']] >= \System\Web\WebApplicationBase::getInstance()->config->authenticationMaxInvalidAttempts)
+					if($ds[$this->credential['failedattemptcount-field']] >= \Rum::config()->authenticationMaxInvalidAttempts)
 					{
 						return false;
 					}
@@ -139,15 +174,22 @@
 				if($ds[$this->credential['attemptwindowexpires-field']] < time()) {
 					// Reset failed count as attempt window has reset
 					$ds[$this->credential['failedattemptcount-field']] = 1;
-					$ds[$this->credential['attemptwindowexpires-field']] = time() + \System\Web\WebApplicationBase::getInstance()->config->authenticationAttemtpWindow;
+					$ds[$this->credential['attemptwindowexpires-field']] = time() + \Rum::config()->authenticationAttemtpWindow;
 				}
 				else {
 					// Increment failed count
 					$ds[$this->credential['failedattemptcount-field']] = $ds[$this->credential['failedattemptcount-field']] + 1;
 				}
 
-				// Store failed count with user
-				$ds->update();
+				try
+				{
+					// Store failed count with user
+					$ds->update();
+				}
+				catch(\System\DB\DatabaseException $e)
+				{
+					throw new \System\DB\DatabaseException("Cannot update credential source, source must be updatable");
+				}
 			}
 		}
 	}

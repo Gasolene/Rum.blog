@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\DB\MySQLi;
 	use \System\DB\DataAdapter;
@@ -85,7 +85,7 @@
 		{
 			if( $this->link )
 			{
-				if( mysqli_close( $this->link ))
+				if( \mysqli_close( $this->link ))
 				{
 					$this->link = null;
 					return true;
@@ -114,29 +114,19 @@
 
 
 		/**
-		 * Executes a query procedure on the current connection and return the result
+		 * prepare an SQL statement
+		 * Creates a prepared statement bound to parameters specified by the @symbol
+		 * e.g. SELECT * FROM `table` WHERE user=@user
 		 *
-		 * @param  string		$query		sql query
-		 * @param  bool		$buffer		buffer resultset
-		 * @return resource
+		 * @param  string	$statement	SQL statement
+		 * @param  array	$parameters	array of parameters to bind
+		 * @return SQLStatement
 		 */
-		protected function query( $query, $buffer )
+		public function prepare($statement, array $parameters = array())
 		{
-			if( $this->link )
-			{
-				$result = \mysqli_query( $this->link, $query, $buffer?MYSQLI_STORE_RESULT:MYSQLI_USE_RESULT );
-
-				if( !$result )
-				{
-					throw new \System\DB\DatabaseException(\mysqli_error($this->link));
-				}
-
-				return $result;
-			}
-			else
-			{
-				throw new \System\DB\DataAdapterException("MySQLi resource in not a valid link identifier");
-			}
+			$mysqlStatement = new MySQLiStatement($this, $this->link);
+			$mysqlStatement->prepare($statement, $parameters);
+			return $mysqlStatement;
 		}
 
 
@@ -150,7 +140,7 @@
 		{
 			if( $this->link )
 			{
-				$result = $this->runQuery( $ds->source, false );
+				$result = $this->query( $ds->source, false );
 
 				if( $result )
 				{
@@ -201,7 +191,7 @@
 			$databaseProperties = array();
 			$tableSchemas = array();
 
-			$tables = $this->runQuery( "SHOW TABLES" );
+			$tables = $this->query( "SHOW TABLES" );
 
 			while($table = \mysqli_fetch_array($tables, MYSQL_NUM))
 			{
@@ -210,7 +200,7 @@
 				$foreignKeys = array();
 				$columnSchemas = array();
 
-				$columns = $this->runQuery( "SELECT * FROM `{$table[0]}` WHERE 0" );
+				$columns = $this->query( "SELECT * FROM `{$table[0]}` WHERE 0" );
 				while($i < \mysqli_num_fields($columns))
 				{
 					$meta = \mysqli_fetch_field_direct($columns, $i);
@@ -242,12 +232,13 @@
 		 */
 		public function addTableSchema( \System\DB\TableSchema &$tableSchema )
 		{
+			$primaryKeys = array();
+			$indexKeys = array();
+			$uniqueKeys = array();
 			$columns = "";
+
 			foreach($tableSchema->columnSchemas as $columnSchema)
 			{
-				$primaryKeys = array();
-				$indexKeys = array();
-				$uniqueKeys = array();
 				$type = "";
 
 				if($columnSchema->integer)
@@ -261,10 +252,6 @@
 				elseif($columnSchema->boolean)
 				{
 					$type = "TINYINT(1)";
-				}
-				elseif($columnSchema->year)
-				{
-					$type = "YEAR";
 				}
 				elseif($columnSchema->date)
 				{
@@ -382,7 +369,7 @@
 				$this->queryBuilder()
 					->insertInto($ds->table, $ds->fields)
 					->values($ds->row)
-					->runQuery();
+					->execute();
 
 				if($tableSchema->primaryKey)
 				{
@@ -414,7 +401,7 @@
 						->update($ds->table)
 						->setColumns($ds->table, $ds->fields, $ds->row)
 						->where($ds->table, $tableSchema->primaryKey, '=', $ds[$tableSchema->primaryKey])
-						->runQuery();
+						->execute();
 				}
 				else
 				{
@@ -446,7 +433,7 @@
 						->delete()
 						->from($ds->table)
 						->where($ds->table, $tableSchema->primaryKey, '=', $ds[$tableSchema->primaryKey])
-						->runQuery();
+						->execute();
 				}
 				else
 				{
@@ -463,11 +450,11 @@
 		/**
 		 * creats a QueryBuilder object
 		 *
-		 * @return MySQLQueryBuilder
+		 * @return SQLQueryBuilder
 		 */
 		public function queryBuilder()
 		{
-			return new MySQLiQueryBuilder($this);
+			return new MySQLiQueryBuilder($this, $this->link);
 		}
 
 
@@ -519,18 +506,6 @@
 
 
 		/**
-		 * Returns escaped string
-		 *
-		 * @param  string $unescaped_string		String to escape
-		 * @return string						Escaped string
-		 */
-		public function escapeString( $unescaped_string )
-		{
-			return \mysqli_real_escape_string( $this->link, $unescaped_string );
-		}
-
-
-		/**
 		 * returns a populated ColumnSchema object
 		 * @param object $meta
 		 * @return \System\DB\ColumnSchema 
@@ -544,21 +519,18 @@
 				'length' => $meta->length,
 				'notNull' => $meta->flags & 1,
 				'primaryKey' => $meta->flags & 2,
-				'multipleKey' => $meta->flags & 16384,
 				'foreignKey' => FALSE,
 				'unique' => $meta->flags & 4,
-				'numeric' => $meta->flags & 32768,
-				'blob' => $meta->flags & 16,
+				'numeric' => $meta->type === MYSQLI_TYPE_INT24 || $meta->type === MYSQLI_TYPE_LONG || $meta->type === MYSQLI_TYPE_LONGLONG || $meta->type === MYSQLI_TYPE_BIT || $meta->type === MYSQLI_TYPE_TINY || $meta->type === MYSQLI_TYPE_DECIMAL || $meta->type === MYSQLI_TYPE_DOUBLE || $meta->type === MYSQLI_TYPE_FLOAT || $meta->type === MYSQLI_TYPE_NEWDECIMAL || $meta->type === MYSQLI_TYPE_YEAR,
 				'string' => $meta->type === MYSQLI_TYPE_STRING || $meta->type === MYSQLI_TYPE_VAR_STRING,
-				'integer' => $meta->type === MYSQLI_TYPE_INT24 || $meta->type === MYSQLI_TYPE_LONG || $meta->type === MYSQLI_TYPE_LONGLONG || $meta->type === MYSQLI_TYPE_BIT || $meta->type === MYSQLI_TYPE_TINY,
+				'integer' => $meta->type === MYSQLI_TYPE_INT24 || $meta->type === MYSQLI_TYPE_LONG || $meta->type === MYSQLI_TYPE_LONGLONG || $meta->type === MYSQLI_TYPE_BIT || $meta->type === MYSQLI_TYPE_TINY || $meta->type === MYSQLI_TYPE_YEAR,
 				'real' => $meta->type === MYSQLI_TYPE_DECIMAL || $meta->type === MYSQLI_TYPE_DOUBLE || $meta->type === MYSQLI_TYPE_FLOAT || $meta->type === MYSQLI_TYPE_NEWDECIMAL,
-				'year' => $meta->type === MYSQLI_TYPE_YEAR,
 				'date' => $meta->type === MYSQLI_TYPE_DATE,
 				'time' => $meta->type === MYSQLI_TYPE_TIME,
 				'datetime' => $meta->type === MYSQLI_TYPE_DATETIME,
 				'boolean' => $meta->type === MYSQLI_TYPE_BIT || $meta->type === MYSQLI_TYPE_TINY,
 				'autoIncrement' => $meta->flags & 512,
-				'binary' => $meta->flags & 128));
+				'blob' => $meta->flags & 128));
 		}
 	}
 ?>

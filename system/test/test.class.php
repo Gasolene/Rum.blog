@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace Rum\Migrate;
 	use System\Console\ConsoleApplicationBase;
@@ -72,7 +72,7 @@
 		 *
 		 * @return void
 		 */
-		protected function handleException(\Exception $e) {die($e->getMessage());}
+		protected function handleException(\Exception $e) {die($e->getMessage().PHP_EOL);}
 
 
 		/**
@@ -85,6 +85,6 @@
 		 *
 		 * @return void
 		 */
-		protected function handleError($errno, $errstr, $errfile, $errline) {die("{$errstr} in {$errfile} on line {$errline}");}
+		protected function handleError($errno, $errstr, $errfile, $errline) {die("{$errstr} in {$errfile} on line {$errline}".PHP_EOL);}
 	}
 ?>

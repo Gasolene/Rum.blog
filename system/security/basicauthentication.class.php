@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Security;
 
@@ -28,8 +28,11 @@
 			{
 				if( Authentication::authenticate( $_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'] )->authenticated() )
 				{
-					Authentication::$identity = BasicAuthentication::getAuthUser();
-					return true;
+					if( Authentication::authorize( $_SERVER['PHP_AUTH_USER'] ))
+					{
+						Authentication::$identity = BasicAuthentication::getAuthUser();
+						return true;
+					}
 				}
 			}
 			return false;
@@ -43,7 +46,7 @@
 		 */
 		public static function sendAuthHeaders()
 		{
-			if( \System\Web\WebApplicationBase::getInstance()->config->authenticationRequireSSL && \System\Web\WebApplicationBase::getInstance()->config->protocol <> 'https' && !isset($GLOBALS["__DISABLE_HEADER_REDIRECTS__"]))
+			if( \Rum::config()->authenticationRequireSSL && \Rum::config()->protocol <> 'https' && !isset($GLOBALS["__DISABLE_HEADER_REDIRECTS__"]))
 			{
 				// redirect to secure server (forward session)
 				$url = 'https://' . __NAME__ . (__SSL_PORT__<>443?':'.__SSL_PORT__:'') . \System\Web\WebApplicationBase::getInstance()->getPageURI('', array( \System\Web\WebApplicationBase::getInstance()->session->sessionName => \System\Web\WebApplicationBase::getInstance()->session->sessionId ));

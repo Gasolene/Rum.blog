@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -16,27 +16,24 @@
 	 * @property bool $enableViewState Specifies whether to enable view state preservation
 	 * @property bool $visible Specifies whether control is visible
 	 * @property bool $escapeOutput Specifies whether to escape the output
-	 * @property string $ajaxCallback Specifies the ajax callback uri (optional)
-	 * @property string $ajaxEventHandler Specifies the name of the ajax event handler javascript function (optional)
-	 * @property string $ajaxHTTPRequest Specifies the name of the ajax HTTPRequest object (optional)
 	 * @property WebControlAttributeCollection $attributes Collection of attributes
 	 * @property WebControlCollection $controls Collection of child controls
 	 * @property WebControlBase $parent parent control
 	 * @property DataSet $dataSource Reference to data-source
 	 * @property mixed $value Control value
-	 * @property EventCollection $events event collection
+	 * @property bool $needsUpdating Specifies if control needs to be updated
 	 *
 	 * @package			PHPRum
 	 * @subpackage		Web
 	 * @author			Darnell Shinbine
 	 */
-	abstract class WebControlBase
+	abstract class WebControlBase extends \System\Base\Object
 	{
 		/**
-		 * specifies whether the server control persists its view state, Default is true
+		 * specifies whether the server control persists its view state, Default is false
 		 * @var bool
 		 */
-		protected $enableViewState		= true;
+		protected $enableViewState		= false;
 
 		/**
 		 * determines whether the control is visible, Default is true
@@ -57,18 +54,6 @@
 		protected $ajaxCallback			= '';
 
 		/**
-		 * specifies the name of the ajax event handler javascript function (optional)
-		 * @var string
-		 */
-		protected $ajaxEventHandler		= '';
-
-		/**
-		 * specifies the name of the ajax HTTPRequest object (optional)
-		 * @var string
-		 */
-		protected $ajaxHTTPRequest		= '';
-
-		/**
 		 * collection of arbitrary attributes (for rendering only)
 		 * @var WebControlAttributeCollection
 		 */
@@ -87,10 +72,10 @@
 		protected $dataSource			= null;
 
 		/**
-		 * event collection
-		 * @var EventCollection
+		 * specifies if control needs to be updated
+		 * @var bool
 		 */
-		protected $events				= null;
+		protected $needsUpdating		= false;
 
 		/**
 		 * Id of the control
@@ -125,21 +110,17 @@
 			// set collections
 			$this->controls = new WebControlCollection( $this );
 			$this->attributes = new WebControlAttributeCollection();
-			$this->events = new \System\Base\EventCollection();
 
 			// set ajax handlers
 			$this->ajaxCallback	= $_SERVER['PHP_SELF'];
-			$this->ajaxHTTPRequest = 'PHPRum.httpRequestObjects[\'' . strtolower( $this->_controlId ) . 'HTTPRequest\']';
 
 			// set viewstate
-			$this->enableViewState = \System\Web\WebApplicationBase::getInstance()->config->viewStateEnabled;
+			$this->enableViewState = \Rum::config()->viewStateEnabled;
 
 			// event handling
 			$this->events->add(new \System\Web\Events\WebControlCreateEvent());
 			$this->events->add(new \System\Web\Events\WebControlInitEvent());
 			$this->events->add(new \System\Web\Events\WebControlLoadEvent());
-			//$this->events->add(new \System\Web\Events\WebControlRequestEvent());
-			//$this->events->add(new \System\Web\Events\WebControlPostEvent());
 			$this->events->add(new \System\Web\Events\WebControlPreRenderEvent());
 
 			$onCreateMethod = 'on'.ucwords($this->controlId).'Create';
@@ -192,18 +173,6 @@
 			{
 				return $this->escapeOutput;
 			}
-			elseif( $field === 'ajaxCallback' )
-			{
-				return $this->ajaxCallback;
-			}
-			elseif( $field === 'ajaxEventHandler' )
-			{
-				return $this->ajaxEventHandler;
-			}
-			elseif( $field === 'ajaxHTTPRequest' )
-			{
-				return $this->ajaxHTTPRequest;
-			}
 			elseif( $field === 'attributes' )
 			{
 				return $this->attributes;
@@ -220,9 +189,9 @@
 			{
 				return $this->dataSource;
 			}
-			elseif( $field === 'events' )
+			elseif( $field === 'needsUpdating' )
 			{
-				return $this->events;
+				return $this->needsUpdating;
 			}
 			else
 			{
@@ -233,7 +202,7 @@
 				}
 				else
 				{
-					throw new \System\Base\BadMemberCallException("call to undefined property $field in ".get_class($this));
+					return parent::__get($field);
 				}
 			}
 		}
@@ -261,21 +230,13 @@
 			{
 				$this->escapeOutput = (bool)$value;
 			}
-			elseif( $field === 'ajaxCallback' )
-			{
-				$this->ajaxCallback = (string)$value;
-			}
-			elseif( $field === 'ajaxEventHandler' )
-			{
-				$this->ajaxEventHandler = (string)$value;
-			}
-			elseif( $field === 'ajaxHTTPRequest' )
-			{
-				$this->ajaxHTTPRequest = (string)$value;
-			}
 			elseif( $field === 'dataSource' )
 			{
 				$this->bind($value);
+			}
+			elseif( $field === 'needsUpdating' )
+			{
+				$this->needsUpdating = (bool)$value;
 			}
 			elseif( $field === 'parent' )
 			{
@@ -297,7 +258,7 @@
 			}
 			else
 			{
-				throw new \System\Base\BadMemberCallException("call to undefined property $field in ".get_class($this));
+				parent::__set($field, $value);
 			}
 		}
 
@@ -327,10 +288,12 @@
 		 * @param  \ArrayAccess		$ds		data source to attach
 		 * @return void
 		 */
-		final public function bind( \System\Base\ModelBase $ds )
+		final public function bind(\System\Base\IBindable $ds)
 		{
 			$this->dataSource =& $ds;
 			$this->onDataBind();
+
+			// throw new \System\Base\InvalidArgumentException("Argument 1 passed to ".get_class($this)."::bind() must implement the IBindable interface or be of the type array");
 		}
 
 
@@ -341,7 +304,7 @@
 		 * @return void
 		 * @ignore
 		 */
-		final public function attachDataSource( \System\Base\ModelBase $ds )
+		final public function attachDataSource(\System\Base\IBindable $ds)
 		{
 			return $this->bind($ds);
 		}
@@ -354,15 +317,8 @@
 		 */
 		final public function refreshDataSource()
 		{
-			if($this->dataSource)
-			{
-				$this->dataSource->requery();
-				$this->onDataBind();
-			}
-			else
-			{
-				throw new \System\Base\InvalidOperationException("Cannot refresh data source, no datasource specified");
-			}
+			$this->dataSource->refresh();
+			$this->onDataBind();
 		}
 
 
@@ -651,7 +607,9 @@
 		 */
 		final public function updateAjax()
 		{
-			$this->onUpdateAjax();
+			if(\Rum::app()->requestHandler->isAjaxPostBack) {
+				$this->onUpdateAjax();
+			}
 		}
 
 
@@ -761,10 +719,13 @@
 		 * creates controlId string for html
 		 *
 		 * @return string	html id string
+		 * @deprecated since version number
+		 * @ignore
 		 */
 		final public function getHTMLControlIdString()
 		{
-			return $this->getParentString() . $this->controlId;
+			trigger_error('WebControlBase::getHTMLControlIdString() is deprecated, use WebControlBase::getHTMLControlId() instead', E_USER_DEPRECATED);
+			return $this->getHTMLControlId();
 		}
 
 
@@ -838,7 +799,12 @@
 		 *
 		 * @return void
 		 */
-		protected function onPreRender() {}
+		protected function onPreRender()
+		{
+			if($this->needsUpdating) {
+				$this->updateAjax();
+			}
+		}
 
 
 		/**
@@ -910,18 +876,11 @@
 		 */
 		final protected function getQueryString( $queryString = '' )
 		{
-			if( strstr( (string)$queryString, '?' ))
-			{
-				$queryString .= '&' . $this->getRequestData();
-			}
-			else
-			{
-				$queryString .= '?' . $this->getRequestData();
-			}
+			$queryString = $this->getRequestData() . '&' . $queryString;
 
 			// extract parameters
 			$args = array();
-			foreach( explode( '&', substr( stristr( $queryString, '?' ), 1 )) as $param ) {
+			foreach( explode( '&', $queryString) as $param ) {
 				$data = explode( '=', $param );
 				if( isset( $data[1] )) {
 					$args[$data[0]] = $data[1];
@@ -930,9 +889,9 @@
 
 			// extract page
 			$page = '';
-			if( isset( $args[\System\Web\WebApplicationBase::getInstance()->config->requestParameter] )) {
-				$page = $args[\System\Web\WebApplicationBase::getInstance()->config->requestParameter];
-				unset( $args[\System\Web\WebApplicationBase::getInstance()->config->requestParameter] );
+			if( isset( $args[\Rum::config()->requestParameter] )) {
+				$page = $args[\Rum::config()->requestParameter];
+				unset( $args[\Rum::config()->requestParameter] );
 			}
 
 			return \System\Web\WebApplicationBase::getInstance()->getPageURI( $page, $args );
@@ -955,8 +914,6 @@
 			// loop through request variables
 			for( $i=0, $count=count( $vars ); $i < $count; $i++ )
 			{
-				if( substr( $vars[$i], 0, strlen( $this->getHTMLControlIdString().'_' )) != $this->getHTMLControlIdString().'_' )
-				{
 					$data = '';
 					if( is_array( \System\Web\HTTPRequest::$request[$vars[$i]] ))
 					{
@@ -985,7 +942,6 @@
 					{
 						$queryString .= $data;
 					}
-				}
 			}
 
 			return $queryString;
@@ -1021,9 +977,9 @@
 		private function setEnableViewState($enableViewState = true)
 		{
 			$this->enableViewState = (bool)$enableViewState;
-			foreach( $this->controls as $childControl )
+			if($this->enableViewState && $this->parent)
 			{
-				$childControl->enableViewState = (bool)$enableViewState;
+				$this->parent->setEnableViewState($enableViewState);
 			}
 		}
 	}

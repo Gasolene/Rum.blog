@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -12,6 +12,7 @@
 	 * Represents a RadioButton Control
 	 *
 	 * @property bool $checked Specifies whether button is checked
+	 * @property string $groupName Specifies group name
 	 *
 	 * @package			PHPRum
 	 * @subpackage		Web
@@ -25,6 +26,12 @@
 		 */
 		protected $checked					= false;
 
+		/**
+		 * Specifies group name
+		 * @var bool
+		 */
+		protected $groupName				= '';
+
 
 		/**
 		 * Constructor
@@ -32,15 +39,18 @@
 		 * The constructor sets attributes based on session data, triggering events, and is responsible for
 		 * formatting the proper request value and garbage handling
 		 *
-		 * @param  string   $controlId	  Control Id
+		 * @param  string   $controlId		Control Id
+		 * @param  string   $groupName		Group name
 		 * @param  string   $default		Default value
 		 * @return void
 		 */
-		public function __construct( $controlId, $default = false )
+		public function __construct( $controlId, $groupName = 'group', $default = false )
 		{
 			parent::__construct( $controlId, $controlId );
+			if($groupName=='group') trigger_error ("RadioButton groupName name not specified, using default", E_USER_NOTICE);
 
 			$this->checked = (bool)$default;
+			$this->groupName = (string)$groupName;
 		}
 
 
@@ -56,6 +66,10 @@
 			if( $field === 'checked' )
 			{
 				return $this->checked;
+			}
+			elseif( $field === 'groupName' )
+			{
+				return $this->groupName;
 			}
 			else
 			{
@@ -78,6 +92,10 @@
 			{
 				$this->checked = (bool)$value;;
 			}
+			elseif( $field === 'groupName' )
+			{
+				$this->groupName = (string)$groupName;
+			}
 			else
 			{
 				return parent::__set( $field, $value );
@@ -94,8 +112,8 @@
 		{
 			$input = $this->getInputDomObject();
 			$input->setAttribute( 'value', $this->value );
-			$input->setAttribute( 'name',  $this->parent->getHTMLControlIdString() );
-			$input->appendAttribute( 'class', ' radiobutton' );
+			$input->setAttribute( 'name',  $this->groupName );
+//			$input->setAttribute( 'class', ' radiobutton' );
 
 			if( $this->visible )
 			{
@@ -139,15 +157,13 @@
 				}
 				else
 				{
-					$radiogroup = $this->getParentByType( '\System\Web\WebControls\RadioGroup' );
-
-					if( isset( $request[$radiogroup->getHTMLControlIdString()] ))
+					if( isset( $request[$this->groupName] ))
 					{
 						// submitted
 						$this->submitted = true;
 
 						// changed
-						if( $this->value === $request[$radiogroup->getHTMLControlIdString()] )
+						if( $this->value === $request[$this->groupName] )
 						{
 							if( !$this->checked )
 							{

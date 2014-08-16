@@ -3,10 +3,10 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 
-ini_set('memory_limit', '555M');
+
 	/**
 	 * Provides access to application services
 	 *
@@ -205,7 +205,6 @@ ini_set('memory_limit', '555M');
 		static public function link($title, $page, array $args = array(), $class = '')
 		{
 			$uri = \Rum::escape(\System\Web\WebApplicationBase::getInstance()->getPageURI($page, $args));
-			$title = \Rum::escape(\System\Web\WebApplicationBase::getInstance()->translator->get($title, $title));
 			return "<a href=\"{$uri}\" title=\"{$title}\" class=\"{$class}\">{$title}</a>";
 		}
 
@@ -224,43 +223,13 @@ ini_set('memory_limit', '555M');
 
 
 		/**
-		 * returns the application messages as an HTML element
+		 * returns an array of que'd up messages
 		 *
-		 * @return string
+		 * @return array
 		 */
 		static public function messages()
 		{
-			$output = '<ul id="messages" class="messages">';
-
-			if( \System\Web\WebApplicationBase::getInstance()->messages->count > 0 )
-			{
-				foreach(\System\Web\WebApplicationBase::getInstance()->messages as $message)
-				{
-					$id = 'm' . uniqid();
-					if($message->type == \System\Base\AppMessageType::Fail())
-					{
-						$output .= "<li class=\"fail\" id=\"{$id}\" onclick=\"PHPRum.fadeOut(this);this.onclick=null;\">";
-					}
-					elseif($message->type == \System\Base\AppMessageType::Warning())
-					{
-						$output .= "<li class=\"warning\" id=\"{$id}\" onclick=\"PHPRum.fadeOut(this);this.onclick=null;\">";
-					}
-					elseif($message->type == \System\Base\AppMessageType::Success())
-					{
-						$output .= "<li class=\"success\" id=\"{$id}\" onclick=\"PHPRum.fadeOut(this);this.onclick=null;\">";
-					}
-					else
-					{
-						$output .= "<li class=\"info\" id=\"{$id}\" onclick=\"PHPRum.fadeOut(this);this.onclick=null;\">";
-					}
-
-					$output .= \nl2br(\Rum::escape($message->message)) . '</li>';
-				}
-			}
-
-			$output .= '</ul>';
-
-			return $output;
+			return \System\Web\WebApplicationBase::getInstance()->messages;
 		}
 
 

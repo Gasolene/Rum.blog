@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -26,8 +26,7 @@
 		public function __construct( $controlId )
 		{
 			parent::__construct( $controlId, '' );
-
-			$this->addValidator(new \System\Validators\FileSizeValidator(( (int) str_replace( 'M', '', ini_get( 'upload_max_filesize' ))) * 1024)); // 1024 = Kb
+			trigger_error("FileBrowser is deprecated, use File instead", E_USER_DEPRECATED);
 		}
 
 
@@ -38,9 +37,9 @@
 		 */
 		public function getFileInfo()
 		{
-			if( isset( $_FILES[$this->getHTMLControlIdString()] ))
+			if( isset( $_FILES[$this->getHTMLControlId()] ))
 			{
-				return $_FILES[$this->getHTMLControlIdString()];
+				return $_FILES[$this->getHTMLControlId()];
 			}
 			else
 			{
@@ -58,9 +57,9 @@
 		{
 			$info = $this->getFileInfo();
 
-			if( $info['size'] > 0 )
+			if( $info['error'] === UPLOAD_ERR_OK )
 			{
-				if( $info['error'] === UPLOAD_ERR_OK )
+				if( $info['size'] > 0 )
 				{
 					$fp = fopen( $info['tmp_name'], 'rb' );
 					if( $fp )
@@ -76,43 +75,43 @@
 				}
 				else
 				{
-					if( $info['error'] === UPLOAD_ERR_INI_SIZE )
-					{
-						throw new \System\Base\InvalidOperationException("the uploaded file exceeds the upload_max_filesize directive");
-					}
-					elseif( $info['error'] === UPLOAD_ERR_FORM_SIZE )
-					{
-						throw new \System\Base\InvalidOperationException("the uploaded file exceeds the MAX_FILE_SIZE directive");
-					}
-					elseif( $info['error'] === UPLOAD_ERR_PARTIAL )
-					{
-						throw new \System\Base\InvalidOperationException("the uploaded file was only partially uploaded");
-					}
-					elseif( $info['error'] === UPLOAD_ERR_NO_FILE )
-					{
-						throw new \System\Base\InvalidOperationException("no file was uploaded");
-					}
-					elseif( $info['error'] === UPLOAD_ERR_NO_TMP_DIR )
-					{
-						throw new \System\Base\FileLoadException("missing temporary folder");
-					}
-					elseif( $info['error'] === UPLOAD_ERR_CANT_WRITE )
-					{
-						throw new \System\Base\InvalidOperationException("failed to write file to disk");
-					}
-					elseif( $info['error'] === UPLOAD_ERR_EXTENSION )
-					{
-						throw new \System\Base\InvalidOperationException("file upload stopped by extension");
-					}
-					else
-					{
-						throw new \System\Base\InvalidOperationException("unknown file upload failure");
-					}
+					return '';
 				}
 			}
 			else
 			{
-				return '';
+				if( $info['error'] === UPLOAD_ERR_INI_SIZE )
+				{
+					throw new \System\Base\InvalidOperationException("the uploaded file exceeds the upload_max_filesize directive");
+				}
+				elseif( $info['error'] === UPLOAD_ERR_FORM_SIZE )
+				{
+					throw new \System\Base\InvalidOperationException("the uploaded file exceeds the MAX_FILE_SIZE directive");
+				}
+				elseif( $info['error'] === UPLOAD_ERR_PARTIAL )
+				{
+					throw new \System\Base\InvalidOperationException("the uploaded file was only partially uploaded");
+				}
+				elseif( $info['error'] === UPLOAD_ERR_NO_FILE )
+				{
+					throw new \System\Base\InvalidOperationException("no file was uploaded");
+				}
+				elseif( $info['error'] === UPLOAD_ERR_NO_TMP_DIR )
+				{
+					throw new \System\Base\FileLoadException("missing temporary folder");
+				}
+				elseif( $info['error'] === UPLOAD_ERR_CANT_WRITE )
+				{
+					throw new \System\Base\InvalidOperationException("failed to write file to disk");
+				}
+				elseif( $info['error'] === UPLOAD_ERR_EXTENSION )
+				{
+					throw new \System\Base\InvalidOperationException("file upload stopped by extension");
+				}
+				else
+				{
+					throw new \System\Base\InvalidOperationException("unknown file upload failure");
+				}
 			}
 		}
 
@@ -126,7 +125,7 @@
 		{
 			$input = $this->getInputDomObject();
 			$input->setAttribute( 'type', 'file' );
-			$input->appendAttribute( 'class', ' filebrowser' );
+			$input->setAttribute( 'class', ' filebrowser' );
 
 			return $input;
 		}
@@ -158,10 +157,10 @@
 		{
 			if( !$this->disabled )
 			{
-				if( isset( $_FILES[$this->getHTMLControlIdString()] ))
+				if( isset( $_FILES[$this->getHTMLControlId()] ))
 				{
 					$this->submitted = true;
-					$this->value = $_FILES[$this->getHTMLControlIdString()]['tmp_name'];
+					$this->value = $_FILES[$this->getHTMLControlId()]['tmp_name'];
 				}
 			}
 

@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -131,18 +131,18 @@
 
 
 		/**
-		 * validates control data, returns true on success
+		 * validates control against validators, returns true on success
 		 *
 		 * @param  string		$errMsg		error message
 		 * @return bool						true if control value is valid
 		 */
-		public function validate(&$errMsg = '', InputBase &$controlToFocus = null)
+		public function validate(&$errMsg = '')
 		{
 			if( $this->multiple )
 			{
 				if( is_array( $this->value ))
 				{
-					return parent::validate($errMsg, $controlToFocus);
+					return parent::validate($errMsg);
 				}
 				else
 				{
@@ -151,7 +151,7 @@
 			}
 			else
 			{
-				return parent::validate($errMsg, $controlToFocus);
+				return parent::validate($errMsg);
 			}
 		}
 
@@ -183,38 +183,18 @@
 		{
 			$this->items->removeAll();
 
-			if( $this->dataSource instanceof \System\DB\DataSet )
+			// convert object into array
+			if( $this->valueField && $this->textField )
 			{
-				if( $this->valueField && $this->textField )
+				foreach( $this->dataSource->toArray() as $row )
 				{
-					while( !$this->dataSource->eof() )
-					{
-						$this->items->add( (string) $this->dataSource[$this->textField], (string) $this->dataSource->row[$this->valueField] );
-						$this->dataSource->next();
-					}
-				}
-				else
-				{
-					throw new \System\Base\InvalidOperationException( 'ListControl::dataBind() called with no valueField or textField set' );
+					$this->items->add( (string) $row[$this->textField], (string) $row[$this->valueField] );
 				}
 			}
 			else
 			{
-				throw new \System\Base\InvalidArgumentException("Argument 1 passed to ".get_class($this)."::bind() must be an object of type DataSet");
+				throw new \System\Base\InvalidOperationException( 'ListControl::dataBind() called with no valueField or textField set' );
 			}
-		}
-
-
-		/**
-		 * called when control is loaded
-		 *
-		 * @return bool			true if successfull
-		 */
-		protected function onLoad()
-		{
-			parent::onLoad();
-
-			$this->getParentByType( '\System\Web\WebControls\Form' )->addParameter( $this->getHTMLControlIdString() . '__post', '1' );
 		}
 
 
@@ -231,31 +211,18 @@
 				{
 					$this->submitted = true;
 				}
-				elseif( isset( $request[$this->getHTMLControlIdString() . '__post'] ))
+
+				if( isset( $request[$this->getHTMLControlId()] ))
 				{
 					$this->submitted = true;
 
-					if( isset( $request[$this->getHTMLControlIdString()] ))
+					if( $this->value != $request[$this->getHTMLControlId()] )
 					{
-						if( $this->value != $request[$this->getHTMLControlIdString()] )
-						{
-							$this->changed = true;
-						}
-
-						$this->value = $request[$this->getHTMLControlIdString()];
-						unset( $request[$this->getHTMLControlIdString()] );
-					}
-					else
-					{
-						if( $this->value != null )
-						{
-							$this->changed = true;
-						}
-
-						$this->value = null;
+						$this->changed = true;
 					}
 
-					unset( $request[$this->getHTMLControlIdString() . '__post'] );
+					$this->value = $request[$this->getHTMLControlId()];
+					unset( $request[$this->getHTMLControlId()] );
 				}
 
 				if( !$this->value && $this->multiple )
@@ -268,11 +235,17 @@
 				}
 			}
 
-			if(( $this->ajaxPostBack || $this->ajaxValidation ) && $this->submitted)
-			{
-				$this->validate($errMsg);
-				$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("if(document.getElementById('{$this->getHTMLControlIdString()}__err')){PHPRum.setText(document.getElementById('{$this->getHTMLControlIdString()}__err'), '".\addslashes($errMsg)."')}");
-			}
+//			if(( $this->ajaxPostBack || $this->ajaxValidation ) && $this->submitted)
+//			{
+//				if($this->validate($errMsg))
+//				{
+//					$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("Rum.clear('{$this->getHTMLControlId()}');");
+//				}
+//				else
+//				{
+//					$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("Rum.assert('{$this->getHTMLControlId()}', '".\addslashes($errMsg)."');");
+//				}
+//			}
 		}
 	}
 ?>

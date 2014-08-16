@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
     namespace System\Make;
 
@@ -41,15 +41,14 @@
 			$path = substr($target, 0, strrpos($target, '/'));
 
 			$className = ucwords(substr(strrchr('/'.$target, '/'), 1));
-			$baseNamespace = RootNamespace;
-			$namespace = str_replace('/', '\\', RootNamespace . self::ControllerNamespace . ($path?'\\'.ucwords($path):''));
-			$baseClassName = '\\'.RootNamespace.self::DefaultBaseController;
+			$baseNamespace = Make::$namespace;
+			$namespace = str_replace('/', '\\', $baseNamespace . self::ControllerNamespace . ($path?'\\'.ucwords($path):''));
+			$baseClassName = '\\'.$baseNamespace.self::DefaultBaseController;
 			$pageURI = $target;
 
 			$controllerPath = \System\Base\ApplicationBase::getInstance()->config->controllers . '/' . strtolower($target) . __CONTROLLER_EXTENSION__;
 			$viewPath = \System\Base\ApplicationBase::getInstance()->config->views . '/' . strtolower($target) . __TEMPLATE_EXTENSION__;
 			$testCasePath = __FUNCTIONAL_TESTS_PATH__ . '/' . strtolower($target) . strtolower(__CONTROLLER_TESTCASE_SUFFIX__) . __CLASS_EXTENSION__;
-			$fixturePath = __FIXTURES_PATH__ . '/' . strtolower($className) . '.sql';
 
 			$controllerTemplate = file_get_contents(\System\Base\ApplicationBase::getInstance()->config->root . "/system/make/templates/pagecontroller.tpl");
 			$controllerTemplate = str_replace("<Namespace>", $namespace, $controllerTemplate);
@@ -76,15 +75,9 @@
 			$testCaseTemplate = str_replace("<TemplateExtension>", __TEMPLATE_EXTENSION__, $testCaseTemplate);
 			$testCaseTemplate = str_replace("<Fixture>", strtolower($className).'.sql', $testCaseTemplate);
 
-			/**
-			$fixtureTemplate = $template = file_get_contents(\System\Base\ApplicationBase::getInstance()->config->root . "/system/make/templates/pagecontrollerfixture.tpl");
-			$fixtureTemplate = str_replace("<PageURI>", $pageURI, $fixtureTemplate);
-			 */
-
 			$this->export($controllerPath, $controllerTemplate);
 			$this->export($viewPath, $viewTemplate);
 			$this->export($testCasePath, $testCaseTemplate);
-			// $this->export($fixturePath, $fixtureTemplate);
 		}
 	}
 ?>

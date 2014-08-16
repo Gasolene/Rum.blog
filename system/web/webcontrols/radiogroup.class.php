@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -29,6 +29,7 @@
 		 */
 		public function __construct( $controlId, $default = null )
 		{
+			trigger_error("RadioGroup is deprecated", E_USER_DEPRECATED);
 			parent::__construct( $controlId, $default );
 		}
 
@@ -53,9 +54,9 @@
 		public function getDomObject()
 		{
 			$fieldset = $this->createDomObject( 'fieldset' );
-			$fieldset->appendAttribute( 'class', ' radiogroup' );
+//			$fieldset->setAttribute( 'class', ' radiogroup' );
 			$legend = new \System\XML\DomObject( 'legend' );
-			$legend->innerHtml = $this->label;
+			$legend->innerHtml = $this->label; // deprecated
 
 			for( $i = 0, $count = $this->controls->count; $i < $count; $i++ )
 			{
@@ -100,7 +101,7 @@
 
 			if( isset( $this->controls[0] ))
 			{
-				$this->defaultHTMLControlId = $this->controls[0]->getHTMLControlIdString();
+				$this->defaultHTMLControlId = $this->controls[0]->getHTMLControlId();
 			}
 			else
 			{
@@ -123,20 +124,20 @@
 				{
 					$this->submitted = true;
 				}
-				elseif( isset( $request[$this->getHTMLControlIdString()] ))
+				elseif( isset( $request[$this->getHTMLControlId()] ))
 				{
 					// submitted
 					$this->submitted = true;
 
 					// changed
-					if( $this->value != $request[$this->getHTMLControlIdString()] )
+					if( $this->value != $request[$this->getHTMLControlId()] )
 					{
 						$this->changed = true;
 					}
 
 					// set value
-					$this->value = $request[$this->getHTMLControlIdString()];
-					unset( $request[$this->getHTMLControlIdString()] );
+					$this->value = $request[$this->getHTMLControlId()];
+					unset( $request[$this->getHTMLControlId()] );
 				}
 			}
 

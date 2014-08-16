@@ -26,5 +26,9 @@
 				'columnKey' => 'entry_id',
 				'notNull' => '1'
 		));
+
+		protected function afterCreate() {
+			$this["datetime"] = date('c');
+		}
 	}
 ?>

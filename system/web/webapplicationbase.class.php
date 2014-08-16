@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web;
 	use System\Base\ApplicationBase;
@@ -73,20 +73,14 @@
 		private $warnings					= array();
 
 		/**
-		 * Contains an array of trace statements
-		 * @var array
-		 */
-		private $trace						= array();
-
-		/**
 		 * Contains the Session object
-		 * @var session
+		 * @var Session
 		 */
 		private $session					= null;
 
 		/**
 		 * Contains the HTTPRequest object
-		 * @var session
+		 * @var HTTPRequest
 		 */
 		private $request					= null;
 
@@ -227,15 +221,13 @@
 		 */
 		final public function getPageURI( $page = '', array $args = array() )
 		{
-			$cookielesssession = true;
-
-			if( isset( $args['PHPSESSID'] ))
+			if( $this->config->cookielessSession )
 			{
-				unset( $args['PHPSESSID'] );
+				$args['PHPSESSID'] = $this->session->sessionId;
 			}
 			else
 			{
-				$cookielesssession = $this->config->cookielessSession;
+				unset($args['PHPSESSID']);
 			}
 
 			$uri = $this->config->uri;
@@ -254,14 +246,9 @@
 				}
 
 				// build uri
-				$uri .= ($cookielesssession?'/('.$this->session->sessionId.')':'') . '/' . $page . $id;
+				$uri .= '/' . $page . $id;
 			}
 			else {
-				// append session to parameter list
-				if( $cookielesssession ) {
-					$args['PHPSESSID'] = $this->session->sessionId;
-				}
-
 				// append page to parameter list
 				if( $page ) {
 					$args[$this->config->requestParameter] = $page;
@@ -315,7 +302,11 @@
 			$response = new \System\Web\HTTPResponse(); // start output buffer
 
 			// check if error code is mapped to controller
-			if( isset( $this->config->errors[$statuscode] ))
+			if( !isset( $this->config->errors[$statuscode] ) || false === strpos($_SERVER["HTTP_ACCEPT"], 'text/html'))
+			{
+				$response->statusCode = $statuscode;
+			}
+			else
 			{
 				$page = $this->config->errors[$statuscode];
 
@@ -323,10 +314,6 @@
 
 				// Render View
 				$requestHandler->getView( $this->request )->render();
-			}
-			else
-			{
-				$response->statusCode = $statuscode;
 			}
 
 			\System\Web\HTTPResponse::end(); // flush and end output buffer
@@ -381,17 +368,6 @@
 
 
 		/**
-		 * Trace a variable
-		 *
-		 * @return  void
-		 */
-		final public function trace($var)
-		{
-			$this->trace[] = $var;
-		}
-
-
-		/**
 		 * return all controllers
 		 *
 		 * @param   string		$path		initial path
@@ -399,7 +375,7 @@
 		 */
 		final public function getAllControllers( $path = '' ) {
 
-			if( !$path ) $path = \System\Web\WebApplicationBase::getInstance()->config->controllers;
+			if( !$path ) $path = \Rum::config()->controllers;
 
 			$modules = array();
 			$dir = dir( $path );
@@ -411,7 +387,7 @@
 					}
 					else {
 						
-						$module = str_replace( \System\Web\WebApplicationBase::getInstance()->config->controllers . '/', '', $path . '/' . $file );
+						$module = str_replace( \Rum::config()->controllers . '/', '', $path . '/' . $file );
 						$module = preg_replace( '^' . '(.*)$^', '\\1', $module );
 						$module = preg_replace( '^.php$^', '\\1', $module );
 						$modules[] = $module;
@@ -446,7 +422,6 @@
 				if( isset( $this->session[$this->applicationId.'_debug_warnings'] ))
 				{
 					$this->warnings = array_merge( $this->warnings, unserialize( $this->session[$this->applicationId.'_debug_warnings'] ));
-					$this->trace = array_merge( $this->trace, unserialize( $this->session[$this->applicationId.'_debug_trace'] ));
 				}
 			}
 		}
@@ -466,7 +441,6 @@
 			if( $this->debug )
 			{
 				$this->session[$this->applicationId.'_debug_warnings'] = serialize( $this->warnings );
-				$this->session[$this->applicationId.'_debug_trace'] = serialize( $this->trace );
 			}
 		}
 
@@ -483,6 +457,49 @@
 
 
 		/**
+		 * returns the environment
+		 *
+		 * @return  string
+		 */
+		final protected function getEnv()
+		{
+			$env = '';
+			if(isset($_SERVER["APP_ENV"]))
+			{
+				$env = $_SERVER["APP_ENV"];
+			}
+			else
+			{
+				$env = '';
+			}
+
+			if($env===__DEV_ENV__ || $env===__TEST_ENV__ || !$env)
+			{
+				if(isset(\System\Web\HTTPRequest::$request[\Rum::config()->requestParameter])&&strpos(\System\Web\HTTPRequest::$request[\Rum::config()->requestParameter], 'dev')===0)
+				{
+					// kludge handle
+					if(strpos(\System\Web\HTTPRequest::$request[\Rum::config()->requestParameter], 'run_')!==false ||
+							\System\Web\HTTPRequest::$request["id"]==='run_all')
+					{
+						$env = __TEST_ENV__;
+					}
+					else
+					{
+						$env =__DEV_ENV__;
+					}
+	//				end kludge
+				}
+				elseif(isset(\System\Web\HTTPRequest::$request[\Rum::config()->requestParameter]) && strpos(\System\Web\HTTPRequest::$request[\Rum::config()->requestParameter], 'test')===0)
+				{
+					$env =__TEST_ENV__;
+				}
+			}
+
+			return $env;
+		}
+
+
+		/**
 		 * execute the application
 		 *
 		 * @return  void
@@ -494,9 +511,6 @@
 
 			// Handle Request Params
 			$this->handleRequestParams(new \System\Web\HTTPRequest());
-
-			// set session timeout directive
-			ini_set( 'session.cookie_lifetime', $this->config->sessionTimeout );
 
 			// Load Application State
 			$this->loadApplicationState();
@@ -593,7 +607,8 @@
 								$outputCacheId = 'output:'.$hash.$requestHandler->getCacheId();
 
 								// Output Cache Exists
-								if( \System\Web\WebApplicationBase::getInstance()->cache->get( $outputCacheId ))
+								$outputCache = \System\Web\WebApplicationBase::getInstance()->cache->get( $outputCacheId );
+								if( $outputCache && !isset( $request["nocache"] ))
 								{
 									$response = new \System\Web\HTTPResponse();
 									$headers = \System\Web\WebApplicationBase::getInstance()->cache->get($headersCacheId);
@@ -675,8 +690,16 @@
 				}
 				else
 				{
-					// Not Authenticated
-					\System\Security\Authentication::redirectToLogin();
+					if( isset( $request->request["async"] ))
+					{
+						// Not Authenticated
+						\Rum::sendHTTPError(401);
+					}
+					else
+					{
+						// Not Authenticated
+						\System\Security\Authentication::redirectToLogin();
+					}
 				}
 			}
 		}
@@ -731,10 +754,27 @@
 					}
 				}
 
-				// bad form, not structured - but the only way to clear the output buffer
+				// KLUDGE: bad form, not structured - but the only way to clear the output buffer
 				@ob_clean();
 
 				$response = new \System\Web\HTTPResponse();
+
+				// handle exceptions on ajax requests
+				if($this->requestHandler)
+				{
+					if($this->requestHandler instanceof PageControllerBase)
+					{
+						if($this->requestHandler->isAjaxPostBack)
+						{
+							$content = "Unhandled Exception in " . strrchr( $e->getFile(), '/' ) . "\\nRuntime Error: ".addslashes($e->getMessage())."\\n\\rDescription: An unhandled exception occurred during execution\\n\\rDetails: " . get_class($e) . ": ".addslashes($e->getMessage())."\\n\\rSource File: ".addslashes($filename)." on line: {$line}";
+
+							\System\Web\HTTPResponse::clear();
+							\System\Web\HTTPResponse::write("console.log('".(str_replace("\n", '', str_replace("\r", '', $content)))."');");
+							\System\Web\HTTPResponse::write("alert('An unhandled exception occurred during execution, please check logs');");
+							\System\Web\HTTPResponse::end();
+						}
+					}
+				}
 
 				\System\Web\HTTPResponse::addHeader( "Content-Type: text/html" );
 				\System\Web\HTTPResponse::write( "<!DOCTYPE html>
@@ -742,16 +782,13 @@
 <head>
 <title>Unhandled Exception: ".htmlentities($e->getMessage())."</title>
 <meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\">
-<link href=\"" . $this->config->assets . "/debug/exception.css\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" />
-<link href=\"" . $this->config->assets . "/debug/debug.css\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" />
-<script src=\"" . $this->config->assets . "/debug/debug.js\" type=\"text/javascript\"></script>
+<link href=\"" . htmlentities($this->getPageURI(__MODULE_REQUEST_PARAMETER__, array('id'=>'core', 'type'=>'text/css', 'asset'=>'debug_tools/exception.css'))) . "\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" />
+<link href=\"" . htmlentities($this->getPageURI(__MODULE_REQUEST_PARAMETER__, array('id'=>'core', 'type'=>'text/css', 'asset'=>'debug_tools/debug.css'))) . "\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" />
+<script src=\"" . htmlentities($this->getPageURI(__MODULE_REQUEST_PARAMETER__, array('id'=>'core', 'type'=>'text/javascript', 'asset'=>'debug_tools/debug.js'))) . "\" type=\"text/javascript\"></script>
 </head>
 <body>
 
-<div id=\"tl\">
-<div id=\"tr\">
-<div id=\"bl\">
-<div id=\"br\">
+<div id=\"page\">
 
 <h1>Unhandled Exception in " . strrchr( $e->getFile(), '/' ) . "</h1>
 
@@ -778,8 +815,6 @@
 <!--<p class=\"dump\" id=\"debug_show\"><a href=\"#debug_dump\" onclick=\"document.getElementById('debug_info').style.display='block';document.getElementById('debug_show').style.display='none';\">Show Debug Information</a></p>-->
 <div style=\"display:none;\" id=\"debug_info\">");
 
-				$this->dumpDebug();
-
 				\System\Web\HTTPResponse::write( "
 </div>
 
@@ -788,28 +823,11 @@
 </div>
 
 </div>
-</div>
-</div>
-</div>
 
 </body>
 </html>" );
 
-				// handle exceptions on ajax requests
-				if($this->requestHandler)
-				{
-					if($this->requestHandler instanceof PageControllerBase)
-					{
-						if($this->requestHandler->isAjaxPostBack)
-						{
-							$content = \System\Web\HTTPResponse::getResponseContent();
-							\System\Web\HTTPResponse::clear();
-							\System\Web\HTTPResponse::write( "
-ExceptionWindow=window.open('', 'Dialog', 'height=800,width=1024,toolbar=no,scrollbars=yes,menubar=no,directories=no,location=no,status=no');
-ExceptionWindow.document.write(\"".addslashes(str_replace(array("\r\n", "\r", "\n"), '', $content))."\")");
-						}
-					}
-				}
+				\System\Web\HTTPResponse::end();
 			}
 			else
 			{
@@ -890,19 +908,42 @@ ExceptionWindow.document.write(\"".addslashes(str_replace(array("\r\n", "\r", "\
 		 */
 		private function startSession()
 		{
-			if( isset( HTTPRequest::$post['PHPSESSID'] ))
+			// set session timeout directive
+			ini_set( 'session.gc_maxlifetime', $this->config->sessionTimeout );
+
+			if( ApplicationBase::getInstance()->config->cookielessSession )
 			{
-				$this->session->start( HTTPRequest::$post['PHPSESSID'] );
-				unset( HTTPRequest::$post['PHPSESSID'] );
-			}
-			elseif( isset( HTTPRequest::$get['PHPSESSID'] ))
-			{
-				$this->session->start( HTTPRequest::$get['PHPSESSID'] );
-				unset( HTTPRequest::$get['PHPSESSID'] );
+				if( isset( HTTPRequest::$post['PHPSESSID'] ))
+				{
+					$this->session->start( HTTPRequest::$post['PHPSESSID'] );
+					unset( HTTPRequest::$post['PHPSESSID'] );
+				}
+				elseif( isset( HTTPRequest::$get['PHPSESSID'] ))
+				{
+					$this->session->start( HTTPRequest::$get['PHPSESSID'] );
+					unset( HTTPRequest::$get['PHPSESSID'] );
+				}
+				else
+				{
+					$this->session->start();
+				}
 			}
 			else
 			{
 				$this->session->start();
+			}
+
+			if( $this->config->sessionTimeout > 0 )
+			{
+				if(isset($this->session[$this->applicationId.'_timeout']))
+				{
+					if($this->session[$this->applicationId.'_timeout'] < time())
+					{
+						$this->session->destroy();
+					}
+				}
+
+				$this->session[$this->applicationId.'_timeout'] = time() + $this->config->sessionTimeout;
 			}
 		}
 
@@ -926,16 +967,44 @@ ExceptionWindow.document.write(\"".addslashes(str_replace(array("\r\n", "\r", "\
 		 */
 		private function handleRequestParams( \System\Web\HTTPRequest &$request )
 		{
-			if(isset($request->get["page"]) && isset($request->get["id"]))
+			if(isset($request->get[\Rum::config()->requestParameter]) && isset($request->get["id"]))
 			{
-				if($request->get["page"]==__ASSET_REQUEST_PARAMETER__ && isset($request->get["res"]))
+				// modules
+				if($request->get[\Rum::config()->requestParameter]===__MODULE_REQUEST_PARAMETER__&&isset($request->get["asset"])&&isset($request->get["type"]))
 				{
-					\System\Web\HTTPResponse::write(file_get_contents(__PLUGINS_PATH__ . '/' . $request->get["id"] . '/assets/' . str_replace(array('..','/'),'',$request->get["res"])));
-					exit;
+					if( $request["type"]==='text/html' ||
+						$request["type"]==='text/javascript' ||
+						$request["type"]==='text/css' ||
+						$request["type"]==='image/jpeg' ||
+						$request["type"]==='image/gif' ||
+						$request["type"]==='image/png')
+					{
+						$asset = str_replace('./', '', $request->get["asset"]);
+						if($request["id"]==='core')
+						{
+							$path = __SYSTEM_PATH__ . '/web';
+						}
+						else
+						{
+							$path = __PLUGINS_PATH__ . '/' . urlencode($request["id"]);
+						}
+
+						$offset = 31536000; // 1 year
+
+						$content = file_get_contents($path . '/assets/' . $asset);
+
+						HTTPResponse::addHeader("Expires: " . gmdate("D, d M Y H:i:s", time() + $offset) . " GMT");
+						HTTPResponse::addHeader("Cache-Control: max-age=$offset, must-revalidate"); 
+						HTTPResponse::addHeader("content-type:".$request["type"]);
+
+						HTTPResponse::write($content);
+						HTTPResponse::end();
+					}
 				}
-				if($_SERVER[__ENV_PARAMETER__]==__DEV_ENV__||$_SERVER[__ENV_PARAMETER__]==__TEST_ENV__)
+				// dev parameters
+				elseif($_SERVER[__ENV_PARAMETER__]===__DEV_ENV__||$_SERVER[__ENV_PARAMETER__]===__TEST_ENV__)
 				{
-					if($request->get["page"]=='dev' && ($request->get["id"]=="clean" || $request->get["id"]=="build"))
+					if($request->get[\Rum::config()->requestParameter]==='dev' && ($request->get["id"]==="clean" || $request->get["id"]==="build"))
 					{
 						\System\Base\Build::$verbose = true;
 						\System\Base\Build::clean();
@@ -945,7 +1014,7 @@ ExceptionWindow.document.write(\"".addslashes(str_replace(array("\r\n", "\r", "\
 						if($request->get["id"]=="build")
 						{
 							$title = "Rebuilding application source files: ";
-							\System\Base\Build::build();
+							\System\Base\Build::rebuild();
 						}
 						$build = ob_get_clean();
 
@@ -955,16 +1024,13 @@ ExceptionWindow.document.write(\"".addslashes(str_replace(array("\r\n", "\r", "\
 <head>
 <title>Building...</title>
 <meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\">
-<link href=\"" . $this->config->assets . "/debug/debug.css\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" />
-".(isset($request["nostyle"])?"":"<link href=\"" . $this->config->assets . "/debug/exception.css\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" />")."
-<script src=\"" . $this->config->assets . "/debug/debug.js\" type=\"text/javascript\"></script>
+<link href=\"" . $this->getPageURI(__MODULE_REQUEST_PARAMETER__, array('id'=>'core', 'type'=>'text/css')) . "&asset=debug_tools/debug.css\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" />
+".(isset($request["nostyle"])?"":"<link href=\"" . $this->getPageURI(__MODULE_REQUEST_PARAMETER__, array('id'=>'core', 'type'=>'text/css')) . "&asset=debug_tools/exception.css\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" />")."
+<script src=\"" . $this->getPageURI(__MODULE_REQUEST_PARAMETER__, array('id'=>'core', 'type'=>'text/js')) . "&asset=debug_tools/debug.js\" type=\"text/javascript\"></script>
 </head>
 <body>
 
-<div id=\"tl\">
-<div id=\"tr\">
-<div id=\"bl\">
-<div id=\"br\">
+<div id=\"page\">
 
 <h1>Building...</h1>
 
@@ -994,27 +1060,45 @@ No building is needed or allowed in a production environment.</p>
 </div>
 
 </div>
-</div>
-</div>
-</div>
 
 </body>
 </html>" );
 						exit;
 					}
-					elseif($request->get["page"]=='dev' && $request->get["id"]=="run_all")
+					elseif($request->get[\Rum::config()->requestParameter]=='dev' && $request->get["id"]=="run_all")
+					{
+						trigger_error("URI mapping dev/run_all is deprecated, use test/run_all instead", E_USER_DEPRECATED);
+						$tester = new \System\Test\Tester();
+						$tester->runAllTestCases(new \System\Test\HTMLTestReporter());
+						exit;
+					}
+					elseif($request->get[\Rum::config()->requestParameter]=='dev/run_unit_test' )
+					{
+						trigger_error("URI mapping dev/run_unit_test is deprecated, use test/run_unit_test instead", E_USER_DEPRECATED);
+						$tester = new \System\Test\Tester();
+						$tester->runUnitTestCase($request->get["id"], new \System\Test\HTMLTestReporter());
+						exit;
+					}
+					elseif($request->get[\Rum::config()->requestParameter]=='dev/run_functional_test' )
+					{
+						trigger_error("URI mapping dev/run_functional_test is deprecated, use test/run_functional_test instead", E_USER_DEPRECATED);
+						$tester = new \System\Test\Tester();
+						$tester->runFunctionalTestCase($request->get["id"], new \System\Test\HTMLTestReporter());
+						exit;
+					}
+					elseif($request->get[\Rum::config()->requestParameter]=='test' && $request->get["id"]=="run_all")
 					{
 						$tester = new \System\Test\Tester();
 						$tester->runAllTestCases(new \System\Test\HTMLTestReporter());
 						exit;
 					}
-					elseif($request->get["page"]=='dev/run_unit_test' )
+					elseif($request->get[\Rum::config()->requestParameter]=='test/run_unit_test' )
 					{
 						$tester = new \System\Test\Tester();
 						$tester->runUnitTestCase($request->get["id"], new \System\Test\HTMLTestReporter());
 						exit;
 					}
-					elseif($request->get["page"]=='dev/run_functional_test' )
+					elseif($request->get[\Rum::config()->requestParameter]=='test/run_functional_test' )
 					{
 						$tester = new \System\Test\Tester();
 						$tester->runFunctionalTestCase($request->get["id"], new \System\Test\HTMLTestReporter());
@@ -1090,7 +1174,7 @@ No building is needed or allowed in a production environment.</p>
 
 				// dump app stats
 				\System\Web\HTTPResponse::write( "<div id=\"debug_toolbar\">" );
-				if( sizeof( $this->warnings ) > 0 )
+				if( sizeof( $this->warnings ) > 0 || sizeof( $this->trace ) > 0 )
 				{
 					\System\Web\HTTPResponse::write( "<a class=\"debug_open\" href=\"#\" onclick=\"PHPRumDebug.debugOpen()\"><span>Open debug panel</span> <strong>(".sizeof( $this->warnings ).")</strong></a> | " );
 				}
@@ -1100,10 +1184,8 @@ No building is needed or allowed in a production environment.</p>
 				}
 				\System\Web\HTTPResponse::write( "<a href=\"".__PROTOCOL__ . '://' . __HOST__ . \System\Web\WebApplicationBase::getInstance()->getPageURI('dev', array('id'=>'clean'))."\">Rebuild source</a> | " );
 				\System\Web\HTTPResponse::write( "<a href=\"".__PROTOCOL__ . '://' . __HOST__ . \System\Web\WebApplicationBase::getInstance()->getPageURI('dev', array('id'=>'run_all'))."\">Run all tests</a> | " );
-				//\System\Web\HTTPResponse::write( "<a onclick=\"PHPRumDebug.launchFrame('".__PROTOCOL__ . '://' . __HOST__ . \System\Web\WebApplicationBase::getInstance()->getPageURI('dev', array('id'=>'build','nostyle'=>'1'))."');\">Rebuild source</a> | " );
-				//\System\Web\HTTPResponse::write( "<a onclick=\"PHPRumDebug.launchFrame('".__PROTOCOL__ . '://' . __HOST__ . \System\Web\WebApplicationBase::getInstance()->getPageURI('dev', array('id'=>'run_all','nostyle'=>'1'))."');\">Run all tests</a> | " );
 				\System\Web\HTTPResponse::write( "<a href=\"#\">Tools</a> | " );
-				\System\Web\HTTPResponse::write( "<span><strong>Execution time:</strong> " . number_format($elapsed*100, 2) . "ms</span>" );
+				\System\Web\HTTPResponse::write( "<span><strong>Execution time:</strong> " . number_format($elapsed*1000, 2) . "ms</span>" );
 				\System\Web\HTTPResponse::write( "<span style=\"float: right;\">" );
 				\System\Web\HTTPResponse::write( "<span>Running in debug mode</span> | " );
 				\System\Web\HTTPResponse::write( "<span><strong>Framework version:</strong> ".\System\Base\FRAMEWORK_VERSION_STRING . "</span>" );
@@ -1114,7 +1196,7 @@ No building is needed or allowed in a production environment.</p>
 				\System\Web\HTTPResponse::write( "<p><strong>Env:</strong> ".$_SERVER[__ENV_PARAMETER__]."</p>" );
 				if($ttl>0) \System\Web\HTTPResponse::write( "<p><strong>Output caching:</strong> output is cached {$ttl}s</p>" );
 				if(ini_get('apc.enabled')==1) \System\Web\HTTPResponse::write( "<p>APC is enabled: ".ini_get("apc.ttl")."s</p>" );
-				\System\Web\HTTPResponse::write( "<p><strong>Caching:</strong> " . (\System\Web\WebApplicationBase::getInstance()->config->cacheEnabled?'enabled':'disabled') . "</p>" );
+				\System\Web\HTTPResponse::write( "<p><strong>Caching:</strong> " . (\Rum::config()->cacheEnabled?'enabled':'disabled') . "</p>" );
 				\System\Web\HTTPResponse::write( "<p><strong>Execution time:</strong> " . $elapsed . "s</p>" );
 
 				// mem usage
@@ -1147,8 +1229,6 @@ No building is needed or allowed in a production environment.</p>
 				// dump trace
 				if( sizeof( $this->trace ) > 0 )
 				{
-					\System\Web\HTTPResponse::write( "<script type=\"text/javascript\">PHPRumDebug.debugOpen()</script>" );
-
 					\System\Web\HTTPResponse::write( "<pre id=\"trace\"><strong>Trace:</strong>\n\n" );
 					$i=0;
 					foreach( $this->trace as $trace )
@@ -1158,13 +1238,10 @@ No building is needed or allowed in a production environment.</p>
 					}
 					\System\Web\HTTPResponse::write( "</pre>" );
 				}
-				$this->trace = array();
 
 				// dump warnings
 				if( sizeof( $this->warnings ) > 0 )
 				{
-					\System\Web\HTTPResponse::write( "<script type=\"text/javascript\">PHPRumDebug.debugOpen()</script>" );
-
 					$count = sizeof( $this->warnings );
 					if($count > __ERROR_LIMIT__)
 					{
@@ -1215,7 +1292,14 @@ No building is needed or allowed in a production environment.</p>
 				ob_start();
 				foreach($_POST as $key=>$value)
 				{
-					print("[{$key}] => {$value}\n");
+					if(is_array($value))
+					{
+						print("[{$key}] => ".serialize($value)."\n");
+					}
+					else
+					{
+						print("[{$key}] => {$value}\n");
+					}
 				}
 				$output = ob_get_clean();
 				\System\Web\HTTPResponse::write( \Rum::escape( $output ));
@@ -1275,7 +1359,12 @@ No building is needed or allowed in a production environment.</p>
 				ob_start();
 				foreach($this->session->getSessionData() as $key=>$value)
 				{
-					print("[{$key}] => {$value}\n");
+					if(is_array($value)) {
+						print("[{$key}] => ".  serialize($value)."\n");
+					}
+					else {
+						print("[{$key}] => {$value}\n");
+					}
 				}
 				$output = ob_get_clean();
 				\System\Web\HTTPResponse::write( \Rum::escape( $this->replaceNonPrinting( $output )));

@@ -11,24 +11,31 @@
 	/**
 	 * Represents a GridView column
 	 *
+	 * @property string $controlId control id
 	 * @property string $dataField datefield
 	 * @property string $headerText header text
 	 * @property string $itemText item text (templating allowed)
 	 * @property string $footerText footer text
 	 * @property string $className class name
+	 * @property GridView $gridView instance of the GridView
 	 * @property EventCollection $events event collection
-	 * @property bool $canFilter specifies whether column can be filtered
-	 * @property string $onmouseover
-	 * @property string $onmouseout
-	 * @property string $onclick
-	 * @property string $ondblclick
+	 * @property GridViewFilter $filter specifies the column filter
+	 * @property bool $ajaxPostBack specifies whether to perform ajax postback on change, Default is false
+	 * @property string $ajaxStartHandler specifies the optional ajax start handler
+	 * @property string $ajaxCompletionHandler specifies the optional ajax completion handler
 	 *
 	 * @package			PHPRum
 	 * @subpackage		Web
 	 *
 	 */
-	class GridViewColumn implements \ArrayAccess
+	class GridViewColumn extends \System\Base\Object implements \ArrayAccess
 	{
+		/**
+		 * control id
+		 * @var string
+		 */
+		protected $controlId			= '';
+
 		/**
 		 * datefield
 		 * @var string
@@ -60,40 +67,46 @@
 		protected $className			= '';
 
 		/**
-		 * event collection
-		 * @var EventCollection
+		 * specifies the column filter
+		 * @var GridViewFilterBase
 		 */
-		protected $events				= null;
+		protected $filter				= null;
 
 		/**
-		 * specifies whether column can be filtered
+		 * instance of the GridView object
+		 * @var GridView
+		 */
+		protected $gridView				= null;
+
+		/**
+		 * event request parameter
+		 * @var string
+		 */
+		protected $ajaxPostBack				= false;
+
+		/**
+		 * specifies the optional ajax start handler
+		 * @var string
+		 */
+		protected $ajaxStartHandler			= 'null';
+
+		/**
+		 * specifies the optional ajax completion handler
+		 * @var string
+		 */
+		protected $ajaxCompletionHandler	= 'null';
+
+		/**
+		 * set when viewState loaded
 		 * @var bool
 		 */
-		protected $canFilter			= true;
+		private $_loaded				= false;
 
 		/**
-		 * specifies the action to take on mouseover events
-		 * @var string
-		 */
-		protected $onmouseover				= '';
-
-		/**
-		 * specifies the action to take on onmouseout events
-		 * @var string
-		 */
-		protected $onmouseout				= '';
-
-		/**
-		 * specifies the action to take on click events
-		 * @var string
-		 */
-		protected $onclick					= '';
-
-		/**
-		 * specifies the action to take on double click events
-		 * @var string
-		 */
-		protected $ondblclick				= '';
+		 * specifies the filter values (for a key/value list)
+		 * @var array
+		 * /
+		protected $filterValues			= array();
 
 
 		/**
@@ -106,13 +119,30 @@
 		 */
 		public function __construct( $dataField, $headerText = '', $itemText = '', $footerText = '', $className = '' )
 		{
+			$this->controlId = (string) $dataField;
 			$this->dataField = (string) $dataField;
 			$this->headerText = (string) $headerText;
 			$this->itemText = (string) $itemText;
 			$this->footerText = (string) $footerText;
 			$this->className = (string) $className;
 
-			$this->events = new \System\Base\EventCollection();
+			// event handling
+			$this->events->add(new \System\Web\Events\GridViewColumnPostEvent());
+			$this->events->add(new \System\Web\Events\GridViewColumnAjaxPostEvent());
+
+			// default events
+			$postEvent='on'.ucwords(str_replace(" ","_",$this->dataField)).'Post';
+			$ajaxPostEvent='on'.ucwords(str_replace(" ","_",$this->dataField)).'AjaxPost';
+
+			if(\method_exists(\System\Web\WebApplicationBase::getInstance()->requestHandler, $postEvent))
+			{
+				$this->events->registerEventHandler(new \System\Web\Events\GridViewColumnPostEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . $postEvent));
+			}
+			if(\method_exists(\System\Web\WebApplicationBase::getInstance()->requestHandler, $ajaxPostEvent))
+			{
+				$this->ajaxPostBack = true;
+				$this->events->registerEventHandler(new \System\Web\Events\GridViewColumnAjaxPostEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . $ajaxPostEvent));
+			}
 		}
 
 
@@ -124,7 +154,10 @@
 		 * @ignore
 		 */
 		public function __get( $field ) {
-			if( $field === 'dataField' ) {
+			if( $field === 'controlId' ) {
+				return $this->controlId;
+			}
+			elseif( $field === 'dataField' ) {
 				return $this->dataField;
 			}
 			elseif( $field === 'headerText' ) {
@@ -139,26 +172,30 @@
 			elseif( $field === 'className' ) {
 				return $this->className;
 			}
-			elseif( $field === 'events' ) {
-				return $this->events;
+			elseif( $field === 'filter' ) {
+				return $this->filter;
+			}
+			elseif( $field === 'gridView' ) {
+				return $this->gridView;
+			}
+			elseif( $field === 'ajaxPostBack' ) {
+				return $this->ajaxPostBack;
+			}
+			elseif( $field === 'ajaxStartHandler' ) {
+				return $this->ajaxStartHandler;
+			}
+			elseif( $field === 'ajaxCompletionHandler' ) {
+				return $this->ajaxCompletionHandler;
 			}
 			elseif( $field === 'canFilter' ) {
-				return $this->canFilter;
-			}
-			elseif( $field === 'onmouseover' ) {
-				return $this->onmouseover;
-			}
-			elseif( $field === 'onmouseout' ) {
-				return $this->onmouseout;
-			}
-			elseif( $field === 'onclick' ) {
-				return $this->onclick;
+				trigger_error("GridViewColumn::canFilter is deprecated", E_USER_DEPRECATED);
+				return true;
 			}
 			elseif( $field === 'ondblclick' ) {
-				return $this->ondblclick;
+				trigger_error("GridViewColumn::ondblclick is deprecated", E_USER_DEPRECATED);
 			}
 			else {
-				throw new \System\Base\BadMemberCallException("call to undefined property $field in ".get_class($this));
+				return parent::__get($field);
 			}
 		}
 
@@ -172,7 +209,10 @@
 		 * @ignore
 		 */
 		public function __set( $field, $value ) {
-			if( $field === 'dataField' ) {
+			if( $field === 'controlId' ) {
+				$this->controlId = (string) $value;
+			}
+			elseif( $field === 'dataField' ) {
 				$this->dataField = (string) $value;
 			}
 			elseif( $field === 'headerText' ) {
@@ -187,23 +227,23 @@
 			elseif( $field === 'className' ) {
 				$this->className = (string) $value;
 			}
-			elseif( $field === 'canFilter' ) {
-				$this->canFilter = (bool) $value;
+			elseif( $field === 'ajaxPostBack' ) {
+				$this->ajaxPostBack = (bool)$value;
 			}
-			elseif( $field === 'onmouseover' ) {
-				$this->onmouseover = (string)$value;
+			elseif( $field === 'ajaxStartHandler' ) {
+				$this->ajaxStartHandler = (string)$value;
 			}
-			elseif( $field === 'onmouseout' ) {
-				$this->onmouseout = (string)$value;
-			}
-			elseif( $field === 'onclick' ) {
-				$this->onclick = (string)$value;
+			elseif( $field === 'ajaxCompletionHandler' ) {
+				$this->ajaxCompletionHandler = (string)$value;
 			}
 			elseif( $field === 'ondblclick' ) {
-				$this->ondblclick = (string)$value;
+				trigger_error("GridViewColumn::ondblclick is deprecated", E_USER_DEPRECATED);
+			}
+			elseif( $field === 'canFilter' ) {
+				trigger_error("GridViewColumn::canFilter is deprecated", E_USER_DEPRECATED);
 			}
 			else {
-				throw new \System\Base\BadMemberCallException("call to undefined property $field in ".get_class($this));
+				parent::__set($field, $value);
 			}
 		}
 
@@ -273,20 +313,90 @@
 
 
 		/**
-		 * handle load events
+		 * set GridView
 		 *
+		 * @param  GridViewFilterBase	&$filter	Instance of a GridViewFilterBase
 		 * @return void
 		 */
-		public function onLoad() {}
+		final public function setGridView(GridView &$gridView)
+		{
+			if(!$this->_loaded)
+			{
+				$this->gridView = &$gridView;
+			}
+			else
+			{
+				throw new \System\Base\InvalidOperationException("Cannot set GridView after column is loaded");
+			}
+		}
 
 
 		/**
-		 * handle request events
+		 * set filter
+		 *
+		 * @param  GridViewFilterBase	&$filter	Instance of a GridViewFilterBase
+		 * @return void
+		 */
+		final public function setFilter(GridViewFilterBase &$filter)
+		{
+			if(!$this->_loaded)
+			{
+				$filter->ajaxPostBack = $this->ajaxPostBack;
+				$this->filter = $filter;
+				$this->filter->setColumn($this);
+			}
+			else
+			{
+				throw new \System\Base\InvalidOperationException("Cannot add filter after column is loaded");
+			}
+		}
+
+
+		/**
+		 * called when all controls are loaded
 		 *
 		 * @param  array	&$request	request data
 		 * @return void
 		 */
-		public function onRequest( &$request ) {}
+		final public function load()
+		{
+			$this->_loaded = true;
+			$this->onLoad();
+			if($this->filter) {
+				$this->filter->load();
+			}
+		}
+
+
+		/**
+		 * read view state from session
+		 *
+		 * @param  array	&$viewState	session data
+		 *
+		 * @return void
+		 */
+		final public function loadViewState( array &$viewState )
+		{
+			$this->onLoadViewState( $viewState );
+			if($this->filter) {
+				$this->filter->loadViewState($viewState);
+			}
+		}
+
+
+		/**
+		 * process the HTTP request array
+		 *
+		 * @param  array	&$request	request data
+		 * @return void
+		 */
+		final public function requestProcessor( array &$request )
+		{
+			$this->onRequest( $request );
+			if($this->filter) {
+				$this->filter->requestProcessor($request);
+			}
+		}
 
 
 		/**
@@ -295,7 +405,77 @@
 		 * @param  array	&$request	request data
 		 * @return void
 		 */
-		public function onPost( &$request ) {}
+		final public function handlePostEvents( array &$request )
+		{
+			$this->onPost( $request );
+		}
+
+
+		/**
+		 * reset filter
+		 *
+		 * @return void
+		 */
+		final public function resetFilter()
+		{
+			if($this->filter)
+			{
+				$this->filter->resetFilter();
+			}
+		}
+
+
+		/**
+		 * filter DataSet
+		 *
+		 * @param  DataSet	&$ds		DataSet
+		 * @param  array	&$request	reqeust data
+		 * @return void
+		 */
+		final public function filterDataSet(\System\DB\DataSet &$ds)
+		{
+			if($this->filter)
+			{
+				$this->filter->filterDataSet($ds);
+
+				if($this->filter->submitted == true && $this->gridView->ajaxPostBack) {
+					$this->gridView->needsUpdating = true;
+				}
+			}
+		}
+
+
+		/**
+		 * get filter TextNode
+		 *
+		 * @return DomObject
+		 */
+		final public function getFilterDomObject()
+		{
+			if($this->filter)
+			{
+				return $this->filter->getDomObject($this->getRequestData());
+			}
+			else
+			{
+				return new \System\XML\DomObject();
+			}
+		}
+
+
+		/**
+		 * write view state to session
+		 *
+		 * @param  array	&$viewState	session data
+		 * @return void
+		 */
+		final public function saveViewState( array &$viewState )
+		{
+			$this->onSaveViewState( $viewState );
+			if($this->filter) {
+				$this->filter->saveViewState($viewState);
+			}
+		}
 
 
 		/**
@@ -303,7 +483,63 @@
 		 *
 		 * @return void
 		 */
-		public function onRender() {}
+		final public function render()
+		{
+			$this->onRender();
+		}
+
+
+		/**
+		 * Event called when view state is loaded
+		 *
+		 * @param  array	&$viewState	session data
+		 * @return void
+		 */
+		protected function onLoadViewState( array &$viewState ) {}
+
+
+		/**
+		 * handle load events
+		 *
+		 * @return void
+		 */
+		protected function onLoad() {}
+
+
+		/**
+		 * handle request events
+		 *
+		 * @param  array	&$request	request data
+		 * @return void
+		 */
+		protected function onRequest( &$request ) {}
+
+
+		/**
+		 * handle post events
+		 *
+		 * @param  array	&$request	request data
+		 * @return void
+		 */
+		protected function onPost( &$request ) {}
+
+
+		/**
+		 * handle render events
+		 *
+		 * @return void
+		 */
+		protected function onRender() {}
+
+
+		/**
+		 * Event called when view state is written
+		 *
+		 * @param  array	&$viewState	session data
+		 *
+		 * @return void
+		 */
+		protected function onSaveViewState( array &$viewState ) {}
 
 
 		/**
@@ -356,7 +592,7 @@
 				}
 				else
 				{
-					if($vars[$i] == \System\Web\WebApplicationBase::getInstance()->config->requestParameter)
+					if($vars[$i] == \Rum::config()->requestParameter)
 					{
 						$data = $vars[$i] . '=' . \System\Web\HTTPRequest::$request[$vars[$i]];
 					}

@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Migrate;
 
@@ -35,19 +35,25 @@
 
 			foreach($this->getMigrations() as $migration)
 			{
-				$transaction = \System\Base\ApplicationBase::getInstance()->dataAdapter->beginTransaction();
+				//$transaction = \System\Base\ApplicationBase::getInstance()->dataAdapter->beginTransaction();
 
 				if( $migration->version > $this->getCurrentVersion() &&
 					$migration->version <= $toVersion)
 				{
-					echo "Upgrading to version {$migration->version}\n";
-					$migration->up();
+					echo "Upgrading to version {$migration->version}".PHP_EOL;
+					$statement = $migration->up();
+					if($statement instanceof \System\DB\SQLStatementBase) {
+						$statement->execute();
+					}
+					else {
+						trigger_error("Migrations::up() should return a SQLStatement object", E_USER_DEPRECATED);
+					}
 
 					// set version
 					$this->setVersion($migration->version);
 				}
 
-				$transaction->commit();
+				//$transaction->commit();
 			}
 		}
 
@@ -61,28 +67,50 @@
 			// default previous version
 			$toVersion=!is_null($toVersion)?(real)$toVersion:$this->getPreviousVersion();
 
+			//$transaction = \System\Base\ApplicationBase::getInstance()->dataAdapter->beginTransaction();
+
+			$next = false;
 			foreach(\array_reverse($this->getMigrations()) as $migration)
 			{
-				$transaction = \System\Base\ApplicationBase::getInstance()->dataAdapter->beginTransaction();
-
 				if( $migration->version <= $this->getCurrentVersion() &&
 					$migration->version > $toVersion)
 				{
-					echo "Downgrading from version {$migration->version}\n";
-					$migration->down();
-				}
-				if( $migration->version <= $this->getCurrentVersion() &&
-					$migration->version >= $toVersion)
-				{
-					$this->setVersion($migration->version);
+					echo "Downgrading from version {$migration->version}".PHP_EOL;
+					try
+					{
+						$statement = $migration->down();
+						if($statement instanceof \System\DB\SQLStatementBase) {
+							$statement->execute();
+						}
+						else {
+							trigger_error("Migrations::down() should return a SQLStatement object", E_USER_DEPRECATED);
+						}
+
+						$this->setVersion($migration->version);
+						$next = true;
+						continue;
+					}
+					catch(\Exception $e)
+					{
+						$this->setVersion($migration->version);
+						throw new \Exception($e->getMessage(), $e->getCode());
+					}
 				}
 
-				$transaction->commit();
+				if($next)
+				{
+					$next = false;
+					$this->setVersion($migration->version);
+					break;
+				}
 			}
-			if($toVersion==0)
+
+			if($toVersion==0 || $next)
 			{
-				$this->setVersion($toVersion);
+				$this->setVersion(0);
 			}
+
+			//$transaction->commit();
 		}
 
 		/**
@@ -124,7 +152,7 @@
 				\System\Base\ApplicationBase::getInstance()->dataAdapter->queryBuilder()
 						->insertInto(__DB_SCHEMA_VERSION_TABLENAME__, array('version'))
 						->values(array('0'))
-						->runQuery();
+						->execute();
 				return 0;
 			}
 		}
@@ -140,7 +168,7 @@
 				\System\Base\ApplicationBase::getInstance()->dataAdapter->queryBuilder()
 						->update(__DB_SCHEMA_VERSION_TABLENAME__)
 						->set(__DB_SCHEMA_VERSION_TABLENAME__, 'version', (real)$version)
-						->runQuery();
+						->execute();
 			}
 			catch (\System\DB\DatabaseException $e)
 			{
@@ -148,7 +176,7 @@
 				\System\Base\ApplicationBase::getInstance()->dataAdapter->queryBuilder()
 						->insertInto(__DB_SCHEMA_VERSION_TABLENAME__, array('version'))
 						->values(array((real)$version))
-						->runQuery();
+						->execute();
 			}
 		}
 
@@ -159,7 +187,12 @@
 		private function getLatestVersion()
 		{
 			$migrations = $this->getMigrations();
-			return $migrations[count($migrations)-1]->version;
+			if(count($migrations)>0) {
+				return $migrations[count($migrations)-1]->version;
+			}
+			else {
+				return 0;
+			}
 		}
 
 		/**

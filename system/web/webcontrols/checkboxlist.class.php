@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -28,12 +28,13 @@
 		 * returns a DomObject representing control
 		 *
 		 * @return DomObject
-		 */
+		 * /
 		public function getDomObject()
 		{
 			$dom = parent::getDomObject();
-			$dom->appendAttribute( 'class', ' checkbuttonlist' );
+//			$dom->setAttribute( 'class', ' checkbuttonlist' );
 			return $dom;
 		}
+		*/
 	}
 ?>

@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -69,7 +69,7 @@
 		{
 			$input = $this->getInputDomObject();
 			$input->setAttribute( 'value', '1' );
-			$input->appendAttribute( 'class', ' checkbox' );
+//			$input->setAttribute( 'class', ' checkbox' );
 
 			if( $this->value )
 			{
@@ -83,19 +83,12 @@
 
 			if( $this->autoPostBack )
 			{
-				$input->appendAttribute( 'onclick', 'document.getElementById(\''.$this->getParentByType( '\System\Web\WebControls\Form')->getHTMLControlIdString().'\').submit();' );
+				$input->setAttribute( 'onclick', 'Rum.id(\''.$this->getParentByType( '\System\Web\WebControls\Form')->getHTMLControlId().'\').submit();' );
 			}
 
 			if( $this->ajaxPostBack )
 			{
-				$input->setAttribute( 'onchange', $this->ajaxHTTPRequest . ' = PHPRum.sendHttpRequest( \'' . $this->ajaxCallback . '\', \'' . $this->getHTMLControlIdString().'__post=1&'.$this->getHTMLControlIdString().'=\'+(this.checked?1:0)+\'&'.$this->getRequestData().'\', \'POST\', ' . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'function() { PHPRum.evalHttpResponse(\''.\addslashes($this->ajaxHTTPRequest).'\') }' ) . ' );' );
-			}
-
-			if( $this->ajaxValidation )
-			{
-				$input->setAttribute( 'onblur', '' );
-				$input->setAttribute( 'onkeyup', '' );
-				$input->setAttribute( 'onfocus', '' );
+				$input->setAttribute( 'onchange', 'Rum.evalAsync(\'' . $this->ajaxCallback . '\',\''.$this->getHTMLControlId().'=\'+(this.checked?1:0)+\'&'.$this->getRequestData().'\',\'POST\','.\addslashes($this->ajaxStartHandler).','.\addslashes($this->ajaxCompletionHandler).');' );
 			}
 
 			if( $this->visible === false )
@@ -122,7 +115,7 @@
 
 			if( $this->getParentByType( '\System\Web\WebControls\Form' ))
 			{
-				$this->getParentByType( '\System\Web\WebControls\Form' )->addParameter( $this->getHTMLControlIdString() . '__post', '1' );
+				$this->getParentByType( '\System\Web\WebControls\Form' )->addParameter( $this->getHTMLControlId() . '__post', '1' );
 			}
 		}
 
@@ -140,24 +133,25 @@
 				{
 					$this->submitted = true;
 				}
-				elseif( isset( $request[$this->getHTMLControlIdString() . '__post'] ))
+				elseif( isset( $request[$this->getHTMLControlId() . '__post'] ))
 				{
 					$this->submitted = true;
 
-					if( $this->value != (bool) isset( $request[$this->getHTMLControlIdString()] ))
+					if( $this->value != (bool) isset( $request[$this->getHTMLControlId()] ))
 					{
 						$this->changed = true;
 					}
 
-					if( isset( $request[$this->getHTMLControlIdString()] ))
+					if( isset( $request[$this->getHTMLControlId()] ))
 					{
 						$this->value = true;
+						unset( $request[$this->getHTMLControlId()] );
 					}
 					else {
 						$this->value = false;
 					}
 
-					unset( $request[$this->getHTMLControlIdString() . '__post'] );
+					unset( $request[$this->getHTMLControlId() . '__post'] );
 				}
 			}
 

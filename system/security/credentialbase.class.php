@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Security;
 
@@ -42,15 +42,5 @@
 		 * @return  AuthenticationStatus
 		 */
 		abstract public function authenticate( $username, $password );
-
-
-		/**
-		 * compare passwords, return true on success
-		 * 
-		 * @param type $encryptedPassword
-		 * @param type $passwordToCompare
-		 * @return bool
-		 */
-		abstract public function comparePassword( $encryptedPassword, $passwordToCompare, $salt );
 	}
 ?>

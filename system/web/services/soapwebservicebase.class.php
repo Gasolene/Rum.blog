@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\Services;
 
@@ -11,7 +11,6 @@
 	/**
 	 * This class handles all remote procedure calls for a SOAP web service
 	 *
-	 * @property string $encoding specifies the character set for the soap message, default is ISO-8859-1
 	 * @property string $cache specifies whether to cache the WSDL, default is WSDL_CACHE_NONE
 	 * @property string $version specifies the SOAP version, default is SOAP_1_2
 	 * @property string $namespace specifies the namespace, default is controller id
@@ -22,12 +21,6 @@
 	 */
 	abstract class SOAPWebServiceBase extends WebServiceBase
 	{
-		/**
-		 * specifies the character set for the soap message
-		 * @var string
-		 */
-		protected $encoding = 'ISO-8859-1';
-
 		/**
 		 * specifies whether to cache the WSDL
 		 * @var string
@@ -50,83 +43,17 @@
 		 * array of reserved methods
 		 * @var array
 		 */
-		protected static $xreserved_methods = array(
+		protected static $reserved_methods = array(
 			'__construct',
 			'__set',
 			'__get',
 			'getView',
 			'getRoles',
 			'getCacheId',
-			'login',
 			'configure',
 			'handle',
 			'getWSDL',
 			'getWSDLURL');
-
-
-		/**
-		 * gets object property
-		 *
-		 * @param  string	$field		name of field
-		 * @return string				string of variables
-		 * @ignore
-		 */
-		public function __get( $field )
-		{
-			if( $field === 'encoding' )
-			{
-				return $this->encoding;
-			}
-			elseif( $field === 'cache' )
-			{
-				return $this->cache;
-			}
-			elseif( $field === 'version' )
-			{
-				return $this->version;
-			}
-			elseif( $field === 'namespace' )
-			{
-				return $this->namespace;
-			}
-			else
-			{
-				return parent::__get( $field );
-			}
-		}
-
-
-		/**
-		 * sets an object property
-		 *
-		 * @param  string	$field		name of the field
-		 * @param  mixed	$value		value of the field
-		 * @return bool					true on success
-		 * @ignore
-		 */
-		public function __set( $field, $value )
-		{
-			if( $field === 'encoding' )
-			{
-				$this->encoding = (string)$value;
-			}
-			elseif( $field === 'cache' )
-			{
-				$this->cache = (string)$value;
-			}
-			elseif( $field === 'version' )
-			{
-				$this->version = (string)$value;
-			}
-			elseif( $field === 'namespace' )
-			{
-				$this->namespace = (string)$value;
-			}
-			else
-			{
-				return parent::__set( $field, $value );
-			}
-		}
 
 
 		/**
@@ -135,9 +62,6 @@
 		 */
 		final protected function configure()
 		{
-			WebServiceBase::$reserved_methods[] = 'getWSDL';
-			WebServiceBase::$reserved_methods[] = 'getWSDLURL';
-
 			parent::configure();
 		}
 
@@ -151,7 +75,6 @@
 		final public function handle( \System\Web\HTTPRequest &$request )
 		{
 			// Configure Web Service
-			$this->view->addHeader('content-type:text/xml');
 			$this->namespace = $this->controllerId;
 
 			// Generate WSDL
@@ -165,7 +88,7 @@
 			$soap_server = new \SoapServer($this->getWSDLURL(), array(
 				'soap_version' => $this->version,
 				'cache_wsdl'=>$this->cache,
-				'encoding'=>$this->encoding
+				'encoding'=>$this->charaset
 				));
 
 			$soap_server->setObject($this);
@@ -174,7 +97,7 @@
 				$soap_server->addFunction($rpc->getFunction());
 			}
 
-			$result = $soap_server->handle();
+			$soap_server->handle();
 		}
 
 		/**
@@ -233,7 +156,7 @@
   </operation>";
 			}
 
-			return "<?xml version ='1.0' encoding ='UTF-8' ?>
+			return "<?xml version ='1.0' encoding ='".$this->charaset."' ?>
 <definitions name='{$this->namespace}'
   targetNamespace='{$this->getWSDLURL()}'
   xmlns:tns='{$this->getWSDLURL()}'

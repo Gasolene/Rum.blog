@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\I18N;
 
@@ -36,7 +36,7 @@
 		 * @param string $table table name
 		 * @param string $dsn database connection string
 		 */
-		public function __construct($table = '', $dsn = '')
+		public function __construct($table = __LANGS_TABLENAME__, $dsn = '')
 		{
 			if($table)
 			{
@@ -84,7 +84,7 @@
 					$this->db->queryBuilder()
 						->insertInto($this->table, array('string_id', 'lang', 'charset', 'value'))
 						->values(array((string)$stringId, $this->lang, $this->charset, (string)$default))
-						->runQuery();
+						->execute();
 
 					return $default;
 				}
@@ -93,7 +93,8 @@
 			{
 				\System\Base\ApplicationBase::getInstance()->dataAdapter->addTableSchema(new \System\DB\TableSchema(
 					array(
-						'name' => $this->table),
+						'name' => $this->table,
+						'primaryKey' => 'string_id'),
 					array(),
 					array(new \System\DB\ColumnSchema(array(
 						'name' => 'string_id',

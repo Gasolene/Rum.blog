@@ -17,6 +17,7 @@
 	 *
 	 * @package			PHPRum
 	 * @subpackage		Web
+	 * @ignore
 	 *
 	 */
 	class Fieldset extends WebControlBase
@@ -37,6 +38,8 @@
 		 */
 		public function __construct( $controlId )
 		{
+			trigger_error("Fieldset is deprecated", E_USER_DEPRECATED);
+
 			parent::__construct( $controlId );
 
 			$this->legend = $controlId;
@@ -98,7 +101,7 @@
 		 * @param  InputBase		&$control		instance of an InputBase
 		 * @return void
 		 */
-		final public function add( InputBase $control )
+		final public function add( DataFieldControlBase $control )
 		{
 			return parent::addControl($control);
 		}
@@ -112,6 +115,21 @@
 		protected function onLoad()
 		{
 			parent::onLoad();
+		}
+
+
+		/**
+		 * Event called on ajax callback
+		 *
+		 * @return void
+		 */
+		protected function onUpdateAjax()
+		{
+			// loop through input controls
+			foreach( $this->controls as $childControl )
+			{
+				$childControl->needsUpdating = true;
+			}
 		}
 
 
@@ -136,12 +154,12 @@
 		 * @param  string $errMsg error message
 		 * @return bool
 		 */
-		public function validate(&$errMsg = '', InputBase &$controlToFocus = null)
+		public function validate(&$errMsg = '')
 		{
 			$valid = true;
 			for($i = 0; $i < $this->controls->count; $i++)
 			{
-				if( !$childControl = $this->controls[$i]->validate( $errMsg, $controlToFocus ))
+				if( !$childControl = $this->controls[$i]->validate( $errMsg ))
 				{
 					$valid = false;
 				}

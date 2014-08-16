@@ -3,14 +3,13 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\DB\MySQL;
-	use System\DB\QueryBuilderBase;
 
 
 	/**
-	 * Represents an SQL Query
+	 * Represents a generic SQL Query
 	 *
 	 * @property bool $empty specifies whether to return empty result set
 	 *
@@ -18,8 +17,38 @@
 	 * @subpackage		DB
 	 * @author			Darnell Shinbine
 	 */
-	final class MySQLQueryBuilder extends QueryBuilderBase
+	class MySQLQueryBuilder extends MySQLStatement
 	{
+		/**
+		 * object opening delimiter
+		 * @var string
+		**/
+		protected $objectOpeningDelimiter	= "`";
+
+		/**
+		 * object closing delimiter
+		 * @var string
+		**/
+		protected $objectClosingDelimiter	= "`";
+
+		/**
+		 * string delimiter
+		 * @var string
+		**/
+		protected $stringDelimiter	= "'";
+
+		/**
+		 * main clause
+		 * @var string
+		**/
+		protected $mainClause		= '';
+
+		/**
+		 * specifies whether to return empty resultset
+		 * @var bool
+		**/
+		protected $empty			= false;
+
 		/**
 		 * array of select columns
 		 * @var array
@@ -67,6 +96,320 @@
 		 * @var array
 		**/
 		private $groupByClauses		= array();
+
+
+		/**
+		 * Constructor
+		 * 
+		 * @param DataAdapter	$dataAdapter	instance of a DataAdapter
+		 * @param resource $connection mysql connection object
+		 * @param string $objectOpeningDelimiter object opening delimiter
+		 * @param string $objectClosingDelimiter object closing delimiter
+		 * @param string $stringDelimiter string delimiter
+		 */
+		public function __construct(\System\DB\DataAdapter &$dataAdapter, $connection, $objectOpeningDelimiter = null, $objectClosingDelimiter = null, $stringDelimiter = null)
+		{
+			parent::__construct($dataAdapter, $connection);
+
+			if($objectOpeningDelimiter) $this->objectOpeningDelimiter = $objectOpeningDelimiter;
+			if($objectClosingDelimiter) $this->objectClosingDelimiter = $objectClosingDelimiter;
+			if($stringDelimiter) $this->stringDelimiter = $stringDelimiter;
+		}
+
+
+		/**
+		 * returns an object property
+		 *
+		 * @param  string	$field		name of the field
+		 * @return bool					true on success
+		 * @ignore
+		 */
+		final public function __get( $field ) {
+			if( $field === 'empty' ) {
+				return $this->empty;
+			}
+			else {
+				return parent::__get($field);
+			}
+		}
+
+
+		/**
+		 * sets an object property
+		 *
+		 * @param  string	$field		name of the field
+		 * @param  mixed	$value		value of the field
+		 * @return bool					true on success
+		 * @ignore
+		 */
+		final public function __set( $field, $value ) {
+			if( $field === 'empty' ) {
+				$this->empty = (bool) $value;
+			}
+			else {
+				parent::__set($field, $value);
+			}
+		}
+
+
+		/**
+		 * impliments `select` statement
+		 *
+		 * @param  string		$table			table name
+		 * @param  string		$column			column name
+		 * @param  string		$alias			column alias
+		 * @return QueryBuilder
+		 */
+		final public function select( $table = '*', $column = '*', $alias = '' ) {
+			$this->setMainClause( 'select' );
+			if($table) {
+				$this->addColumn( $table, $column, $alias );
+			}
+			return $this;
+		}
+
+
+		/**
+		 * add column
+		 *
+		 * @return void
+		 */
+		final public function column( $table = '*', $column = '*', $alias = '' ) {
+			$this->columns[] = array(
+				  'table'  => (string) $table
+				, 'column' => (string) $column
+				, 'alias'  => $alias?(string)$alias:(string)$column );
+		}
+
+
+		/**
+		 * impliments `insert into` statement
+		 *
+		 * @param  string		$table			table name
+		 * @param  array		$columns		array of columns
+		 * @return QueryBuilder
+		 */
+		final public function insertInto( $table, array $columns ) {
+			$this->setMainClause( 'insert' );
+			$this->addTable( $table );
+			foreach( $columns as $columnname ) {
+				$this->addColumn( $table, $columnname );
+			}
+			return $this;
+		}
+
+
+		/**
+		 * impliments `update` statement
+		 *
+		 * @param  string		$table			table name
+		 * @return QueryBuilder
+		 */
+		final public function update( $table ) {
+			$this->setMainClause( 'update' );
+			$this->addTable( $table );
+			return $this;
+		}
+
+
+		/**
+		 * impliments `truncate` statement
+		 *
+		 * @param  string		$table			table name
+		 * @return QueryBuilder
+		 */
+		final public function truncate($table) {
+			$this->setMainClause( 'truncate' );
+			$this->addTable( $table, $table );
+			return $this;
+		}
+
+
+		/**
+		 * impliments `delete` statement
+		 *
+		 * @return QueryBuilder
+		 */
+		final public function delete() {
+			$this->setMainClause( 'delete' );
+			return $this;
+		}
+
+
+		/**
+		 * impliments `from` statement
+		 *
+		 * @param  string		$table			table name
+		 * @param  string		$alias			table alias
+		 * @return QueryBuilder
+		 */
+		final public function from( $table, $alias = '' ) {
+			$this->checkMainClause( 'select', 'delete' );
+			$this->addTable( $table, $alias );
+			return $this;
+		}
+
+
+		/**
+		 * impliments `values` statement
+		 *
+		 * @param  array		$values			array of column values
+		 * @return QueryBuilder
+		 */
+		final public function values( array $values ) {
+			$this->checkMainClause( 'insert' );
+			foreach( $values as $value ) {
+				$this->addValue( $value );
+			}
+			return $this;
+		}
+
+
+		/**
+		 * impliments `set` statement
+		 *
+		 * @param  string		$table			table name
+		 * @param  string		$column			column name
+		 * @param  string		$value			column value
+		 * @return QueryBuilder
+		 */
+		final public function set( $table, $column, $value ) {
+			$this->checkMainClause( 'update' );
+			$this->addColumn( $table, $column );
+			$this->addValue ( $value );
+			return $this;
+		}
+
+
+		/**
+		 * impliments `set` statement
+		 *
+		 * @param  string		$table			table name
+		 * @param  array		$columns		column names
+		 * @param  array		$values			values
+		 * @return QueryBuilder
+		 */
+		final public function setColumns( $table, array $columns, array $values ) {
+			$this->checkMainClause( 'update' );
+			foreach( $columns as $column ) {
+				$this->addColumn( $table, $column );
+			}
+			foreach( $values as $value ) {
+				$this->addValue( $value );
+			}
+			return $this;
+		}
+
+
+		/**
+		 * impliments `inner join` statement
+		 *
+		 * @param  string		$lefttable			left table name
+		 * @param  string		$leftcolumn			left column name
+		 * @param  string		$righttable			right table name
+		 * @param  string		$rightcolumn		right column name
+		 * @param  string		$alias				left table alias
+		 * @return QueryBuilder
+		 */
+		final public function innerJoin( $lefttable, $leftcolumn, $righttable, $rightcolumn, $alias = '' ) {
+			$this->checkMainClause( 'select', 'delete' );
+			$this->addJoin( 'inner', $lefttable, $leftcolumn, $righttable, $rightcolumn, $alias );
+			return $this;
+		}
+
+
+		/**
+		 * impliments `left join` statement
+		 *
+		 * @param  string		$lefttable			left table name
+		 * @param  string		$leftcolumn			left column name
+		 * @param  string		$righttable			right table name
+		 * @param  string		$rightcolumn		right column name
+		 * @param  string		$alias				left table alias
+		 * @return QueryBuilder
+		 */
+		final public function leftJoin( $lefttable, $leftcolumn, $righttable, $rightcolumn, $alias = '' ) {
+			$this->checkMainClause( 'select', 'delete' );
+			$this->addJoin( 'left', $lefttable, $leftcolumn, $righttable, $rightcolumn, $alias );
+			return $this;
+		}
+
+
+		/**
+		 * impliments `right join` statement
+		 *
+		 * @param  string		$lefttable			left table name
+		 * @param  string		$leftcolumn			left column name
+		 * @param  string		$righttable			right table name
+		 * @param  string		$rightcolumn		right column name
+		 * @param  string		$alias				left table alias
+		 * @return QueryBuilder
+		 */
+		final public function rightJoin( $lefttable, $leftcolumn, $righttable, $rightcolumn, $alias = '' ) {
+			$this->checkMainClause( 'select', 'delete' );
+			$this->addJoin( 'right', $lefttable, $leftcolumn, $righttable, $rightcolumn, $alias );
+			return $this;
+		}
+
+
+		/**
+		 * impliments `where` statement
+		 *
+		 * @param  string		$table			table name
+		 * @param  string		$column			column name
+		 * @param  string		$operand		operation to perform
+		 * @param  string		$value			column value
+		 * @return QueryBuilder
+		 */
+		final public function where( $table, $column, $operand, $value ) {
+			$this->checkMainClause( 'select', 'update', 'delete' );
+			$this->addWhereClause( $table, $column, $operand, $value );
+			return $this;
+		}
+
+
+		/**
+		 * impliments `order by` statement
+		 *
+		 * @param  string		$table			table name
+		 * @param  string		$column			column name
+		 * @param  string		$direction		order by direction
+		 * @return QueryBuilder
+		 */
+		final public function orderBy( $table, $column, $direction = 'asc' ) {
+			$this->checkMainClause( 'select' );
+			$this->addOrderByClause( $table, $column, $direction );
+			return $this;
+		}
+
+
+		/**
+		 * impliments `having` statement
+		 *
+		 * @param  string		$column			column name
+		 * @param  string		$operand		operation to perform
+		 * @param  string		$value			column value
+		 * @return QueryBuilder
+		 */
+		final public function having( $column, $operand, $value ) {
+			$this->checkMainClause( 'select', 'update', 'delete' );
+			$this->addHavingClause( $column, $operand, $value );
+			return $this;
+		}
+
+
+		/**
+		 * impliments `group by` statement
+		 *
+		 * @param  string		$table			table name
+		 * @param  string		$column			column name
+		 * @return QueryBuilder
+		 */
+		final public function groupBy( $table, $column ) {
+			$this->checkMainClause( 'select' );
+			$this->addGroupByClause( $table, $column );
+			return $this;
+		}
 
 
 		/**
@@ -173,14 +516,56 @@
 
 
 		/**
-		 * get SQL query
+		 * check statement
 		 *
-		 * @return string SQL query
+		 * @return bool
 		 */
-		public function getQuery() {
+		private function checkMainClause( $statement1, $statement2 = '', $statement3 = '', $statement4 = '' ) {
+			if( $this->mainClause ) {
+
+				if( $this->mainClause === (string) $statement1 ) {
+					return true;
+				}
+				elseif( $this->mainClause === (string) $statement2 ) {
+					return true;
+				}
+				elseif( $this->mainClause === (string) $statement3 ) {
+					return true;
+				}
+				elseif( $this->mainClause === (string) $statement4 ) {
+					return true;
+				}
+			}
+
+			throw new QueryException("unexpected clause in `{$this->mainClause}` statement");
+		}
+
+
+		/**
+		 * set statement
+		 *
+		 * @return bool
+		 */
+		private function setMainClause( $statement ) {
+			if( !$this->mainClause || $this->mainClause === (string) $statement ) {
+				$this->mainClause = (string) $statement;
+				return;
+			}
+
+			throw new QueryException( 'unexpected statement `' . (string) $statement . '` on `' . $this->mainClause . '` statement' );
+		}
+
+
+		/**
+		 * get prepared SQL statement as string
+		 *
+		 * @param  array	$parameters	array of parameters to bind
+		 * @return string
+		 */
+		public function getPreparedStatement(array $parameters = array()) {
 
 			// select
-			if( $this->statement === 'select' ) {
+			if( $this->mainClause === 'select' ) {
 				$sql = 'select';
 
 				// columns
@@ -199,14 +584,14 @@
 						$columns .= '*';
 					}
 					else {
-						$columns .= '`' . $column['table'] . '`';
+						$columns .= ''.$this->objectOpeningDelimiter.'' . $column['table'] . ''.$this->objectClosingDelimiter.'';
 
 						if( $column['column'] === '*' ) {
 							$columns .= '.*';
 						}
 						else {
-							$columns .= '.`' . $column['column'] . '`';
-							$columns .= ' as `' . $column['alias'] . '`';
+							$columns .= '.'.$this->objectOpeningDelimiter.'' . $column['column'] . ''.$this->objectClosingDelimiter.'';
+							$columns .= ' as '.$this->objectOpeningDelimiter.'' . $column['alias'] . ''.$this->objectClosingDelimiter.'';
 						}
 					}
 				}
@@ -218,11 +603,11 @@
 				foreach( $this->tables as $table ) {
 					if( strlen( $tables ) > 0 ) {
 						$tables .= '
-	, `' . $table['table'] . '`' . ' as `' . $table['alias'] . '`';
+	, '.$this->objectOpeningDelimiter.'' . $table['table'] . ''.$this->objectClosingDelimiter.'' . ' as '.$this->objectOpeningDelimiter.'' . $table['alias'] . ''.$this->objectClosingDelimiter.'';
 					}
 					else {
 						$tables = '
-	from `' . $table['table'] . '`' . ' as `' . $table['alias'] . '`';
+	from '.$this->objectOpeningDelimiter.'' . $table['table'] . ''.$this->objectClosingDelimiter.'' . ' as '.$this->objectOpeningDelimiter.'' . $table['alias'] . ''.$this->objectClosingDelimiter.'';
 					}
 				}
 
@@ -230,22 +615,22 @@
 			}
 
 			// insert
-			elseif( $this->statement === 'insert' ) {
+			elseif( $this->mainClause === 'insert' ) {
 				$sql = 'insert';
 
 				$tables = $this->tables;
 
 				$sql .= '
-	into `' . $tables[0]['table'] . '` (';
+	into '.$this->objectOpeningDelimiter.'' . $tables[0]['table'] . ''.$this->objectClosingDelimiter.' (';
 
 				// columns
 				$columns = '';
 				foreach( $this->columns as $column ) {
 					if( strlen( $columns ) > 0 ) {
-						$columns .= ',`' . $column['column'] . '`';
+						$columns .= ','.$this->objectOpeningDelimiter.'' . $column['column'] . ''.$this->objectClosingDelimiter.'';
 					}
 					else {
-						$columns = '`' . $column['column'] . '`';
+						$columns = ''.$this->objectOpeningDelimiter.'' . $column['column'] . ''.$this->objectClosingDelimiter.'';
 					}
 				}
 
@@ -258,6 +643,7 @@
 				// values
 				$values = '';
 				foreach( $this->values as $value ) {
+
 					if( strlen( $values ) > 0 ) {
 						$values .= ',';
 					}
@@ -277,7 +663,13 @@
 						$values .= (real)$value;
 					}
 					else {
-						$values .= '"' . $this->dataAdapter->escapeString( $value ) . '"';
+						$value = \mysql_real_escape_string( $value );
+						if(strpos($value, '0x' )===0) {
+							$values .= $value;
+						}
+						else {
+							$values .= $this->stringDelimiter . $value . $this->stringDelimiter;
+						}
 					}
 				}
 
@@ -285,11 +677,11 @@
 			}
 
 			// update
-			elseif( $this->statement === 'update' ) {
+			elseif( $this->mainClause === 'update' ) {
 				$sql = 'update';
 
 				$tables = $this->tables;
-				$sql .= ' `' . $tables[0]['table'] . '`';
+				$sql .= ' '.$this->objectOpeningDelimiter.'' . $tables[0]['table'] . ''.$this->objectClosingDelimiter.'';
 
 				// set
 				$columns = $this->columns;
@@ -302,23 +694,29 @@
 					}
 					else {
 						$setClause = '
-set ';
+	set ';
 					}
 
 					if( is_null( $values[$i] )) {
-						$setClause .= '`' . $columns[$i]['table'] . '`.`' . $columns[$i]['column'] . '` = null';
+						$setClause .= ''.$this->objectOpeningDelimiter.'' . $columns[$i]['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $columns[$i]['column'] . ''.$this->objectClosingDelimiter.' = null';
 					}
 					elseif( is_bool( $values[$i] )) {
-						$setClause .= '`' . $columns[$i]['table'] . '`.`' . $columns[$i]['column'] . '` = ' . ($values[$i]?'true':'false');
+						$setClause .= ''.$this->objectOpeningDelimiter.'' . $columns[$i]['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $columns[$i]['column'] . ''.$this->objectClosingDelimiter.' = ' . ($values[$i]?'true':'false');
 					}
 					elseif( is_int( $values[$i] )) {
-						$setClause .= '`' . $columns[$i]['table'] . '`.`' . $columns[$i]['column'] . '` = ' . (int)$values[$i];
+						$setClause .= ''.$this->objectOpeningDelimiter.'' . $columns[$i]['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $columns[$i]['column'] . ''.$this->objectClosingDelimiter.' = ' . (int)$values[$i];
 					}
 					elseif( is_float( $values[$i] )) {
-						$setClause .= '`' . $columns[$i]['table'] . '`.`' . $columns[$i]['column'] . '` = ' . (real)$values[$i];
+						$setClause .= ''.$this->objectOpeningDelimiter.'' . $columns[$i]['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $columns[$i]['column'] . ''.$this->objectClosingDelimiter.' = ' . (real)$values[$i];
 					}
 					else {
-						$setClause .= '`' . $columns[$i]['table'] . '`.`' . $columns[$i]['column'] . '` = "' . $this->dataAdapter->escapeString( $values[$i] ) . '"';
+						$value = \mysql_real_escape_string( $values[$i] );
+						if(strpos( $value, '0x' )===0) {
+							$setClause .= ''.$this->objectOpeningDelimiter.'' . $columns[$i]['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $columns[$i]['column'] . ''.$this->objectClosingDelimiter.' = ' . $value;
+						}
+						else {
+							$setClause .= ''.$this->objectOpeningDelimiter.'' . $columns[$i]['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $columns[$i]['column'] . ''.$this->objectClosingDelimiter.' = ' . $this->stringDelimiter . $value . $this->stringDelimiter;
+						}
 					}
 				}
 
@@ -326,7 +724,7 @@ set ';
 			}
 
 			// delete
-			elseif( $this->statement === 'delete' ) {
+			elseif( $this->mainClause === 'delete' ) {
 				$sql = 'delete';
 
 				// from
@@ -334,11 +732,11 @@ set ';
 				foreach( $this->tables as $table ) {
 					if( strlen( $tables ) > 0 ) {
 						$tables .= '
-	, `' . $table['table'] . '`';
+	, '.$this->objectOpeningDelimiter.'' . $table['table'] . ''.$this->objectClosingDelimiter.'';
 					}
 					else {
 						$tables = '
-	from `' . $table['table'] . '`';
+	from '.$this->objectOpeningDelimiter.'' . $table['table'] . ''.$this->objectClosingDelimiter.'';
 					}
 				}
 
@@ -346,17 +744,17 @@ set ';
 			}
 
 			// delete
-			elseif( $this->statement === 'truncate' ) {
+			elseif( $this->mainClause === 'truncate' ) {
 				$sql = 'truncate';
 
 				// from
 				$tables = '';
 				foreach( $this->tables as $table ) {
 					if( strlen( $tables ) > 0 ) {
-						$tables .= ', `' . $table['table'] . '`';
+						$tables .= ', '.$this->objectOpeningDelimiter.'' . $table['table'] . ''.$this->objectClosingDelimiter.'';
 					}
 					else {
-						$tables = ' `' . $table['table'] . '`';
+						$tables = ' '.$this->objectOpeningDelimiter.'' . $table['table'] . ''.$this->objectClosingDelimiter.'';
 					}
 				}
 
@@ -367,8 +765,8 @@ set ';
 			foreach( $this->joins as $join ) {
 				$sql .= '
 ' . $join['type'] . '
-	join `' . $join['lefttable'] . '` as `' . $join['alias'] . '`
-		on `' . $join['alias'] . '`.`' . $join['leftcolumn'] . '` = `' . $join['righttable'] . '`.`' . $join['rightcolumn'] . '`';
+	join '.$this->objectOpeningDelimiter.'' . $join['lefttable'] . ''.$this->objectClosingDelimiter.' as '.$this->objectOpeningDelimiter.'' . $join['alias'] . ''.$this->objectClosingDelimiter.'
+		on '.$this->objectOpeningDelimiter.'' . $join['alias'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $join['leftcolumn'] . ''.$this->objectClosingDelimiter.' = '.$this->objectOpeningDelimiter.'' . $join['righttable'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $join['rightcolumn'] . ''.$this->objectClosingDelimiter.'';
 
 
 			}
@@ -386,23 +784,30 @@ where';
 				}
 				if( is_null( $where['value'] )) {
 					$whereClause .= '
-	`' . $where['table'] . '`.`' . $where['column'] . '` is null';
+	'.$this->objectOpeningDelimiter.'' . $where['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $where['column'] . ''.$this->objectClosingDelimiter.' is null';
 				}
 				elseif( is_bool( $where['value'] )) {
 					$whereClause .= '
-	`' . $where['table'] . '`.`' . $where['column'] . '` = ' . ($where['value']?'true':'false');
+	'.$this->objectOpeningDelimiter.'' . $where['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $where['column'] . ''.$this->objectClosingDelimiter.' = ' . ($where['value']?'true':'false');
 				}
 				elseif( is_int( $where['value'] )) {
 					$whereClause .= '
-	`' . $where['table'] . '`.`' . $where['column'] . '` ' . $where['operand'] . ' ' . (int)$where['value'] . '';
+	'.$this->objectOpeningDelimiter.'' . $where['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $where['column'] . ''.$this->objectClosingDelimiter.' ' . $where['operand'] . ' ' . (int)$where['value'] . '';
 				}
 				elseif( is_float( $where['value'] )) {
 					$whereClause .= '
-	`' . $where['table'] . '`.`' . $where['column'] . '` ' . $where['operand'] . ' ' . (real)$where['value'] . '';
+	'.$this->objectOpeningDelimiter.'' . $where['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $where['column'] . ''.$this->objectClosingDelimiter.' ' . $where['operand'] . ' ' . (real)$where['value'] . '';
 				}
 				else {
-					$whereClause .= '
-	`' . $where['table'] . '`.`' . $where['column'] . '` ' . $where['operand'] . ' "' . $this->dataAdapter->escapeString( $where['value'] ) . '"';
+					$value = \mysql_real_escape_string( $where['value'] );
+					if(strpos( $value, '0x' )===0) {
+						$whereClause .= '
+	'.$this->objectOpeningDelimiter.'' . $where['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $where['column'] . ''.$this->objectClosingDelimiter.' ' . $where['operand'] . ' ' . $value;
+					}
+					else {
+						$whereClause .= '
+	'.$this->objectOpeningDelimiter.'' . $where['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $where['column'] . ''.$this->objectClosingDelimiter.' ' . $where['operand'] . ' ' . $this->stringDelimiter . $value . $this->stringDelimiter;
+					}
 				}
 			}
 
@@ -421,12 +826,12 @@ where
 			foreach( $this->orderByClauses as $orderby ) {
 				if( strlen( $orderByClause ) > 0 ) {
 					$orderByClause .= '
-	, `' . $orderby['table'] . '`.`' . $orderby['column'] . '` ' . $orderby['direction'];
+	, '.$this->objectOpeningDelimiter.'' . $orderby['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $orderby['column'] . ''.$this->objectClosingDelimiter.' ' . $orderby['direction'];
 				}
 				else {
 					$orderByClause = '
 order
-	by `' . $orderby['table'] . '`.`' . $orderby['column'] . '` ' . $orderby['direction'];
+	by '.$this->objectOpeningDelimiter.'' . $orderby['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $orderby['column'] . ''.$this->objectClosingDelimiter.' ' . $orderby['direction'];
 				}
 			}
 
@@ -437,12 +842,12 @@ order
 			foreach( $this->groupByClauses as $groupby ) {
 				if( strlen( $groupByClause ) > 0 ) {
 					$groupByClause .= '
-	, `' . $groupby['table'] . '`.`' . $groupby['column'] . '`';
+	, '.$this->objectOpeningDelimiter.'' . $groupby['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $groupby['column'] . ''.$this->objectClosingDelimiter.'';
 				}
 				else {
 					$groupByClause = '
 group
-	by `' . $groupby['table'] . '`.`' . $groupby['column'] . '`';
+	by '.$this->objectOpeningDelimiter.'' . $groupby['table'] . ''.$this->objectClosingDelimiter.'.'.$this->objectOpeningDelimiter.'' . $groupby['column'] . ''.$this->objectClosingDelimiter.'';
 				}
 			}
 
@@ -459,13 +864,21 @@ and';
 					$havingClause = '
 having';
 				}
-				$havingClause .= '
-	`' . $having['column'] . '` ' . $having['operand'] . ' "' . $this->dataAdapter->escapeString( $having['value'] ) . '"';
+				$value = \mysql_real_escape_string( $having['value'] );
+				if(strpos( $value, '0x' )===0) {
+					$havingClause .= '
+	'.$this->objectOpeningDelimiter.'' . $having['column'] . ''.$this->objectClosingDelimiter.' ' . $having['operand'] . ' ' . $value;
+				}
+				else {
+					$havingClause .= '
+	'.$this->objectOpeningDelimiter.'' . $having['column'] . ''.$this->objectClosingDelimiter.' ' . $having['operand'] . ' ' . $this->stringDelimiter . $value . $this->stringDelimiter;
+				}
 			}
 
 			$sql .= isset( $havingClause )?$havingClause:'';
+			$this->prepare($sql);
 
-			return $sql;
+			return parent::getPreparedStatement($parameters);
 		}
 	}
 ?>

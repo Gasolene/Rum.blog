@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 	use \System\Collections\CollectionBase;
@@ -106,7 +106,7 @@
 
 				if($index > -1)
 				{
-					unset($this->items[$index]);
+					//unset($this->items[$index]);
 					$this->items[$index] = $item;
 				}
 				else

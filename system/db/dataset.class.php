@@ -3,10 +3,9 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\DB;
-	use \System\Base\ModelBase;
 
 
 	/**
@@ -19,7 +18,7 @@
 	 * @property int $count number of records
 	 * @property bool $eof specifies if end of record
 	 * @property bool $bof specifies if beginning of record
-	 * @property string $source data source string
+	 * @property object $source data source object
 	 * @property string $table source table
 	 * @property array $fieldMeta array of field meta data
 	 * @property array $fields array of fields
@@ -31,7 +30,7 @@
 	 * @subpackage		DB
 	 * @author			Darnell Shinbine
 	 */
-	final class DataSet extends ModelBase implements \Countable
+	final class DataSet extends \System\Base\Object implements \System\Base\IBindable
 	{
 		/**
 		 * array of FieldMeta objects
@@ -207,9 +206,60 @@
 		/**
 		 * create new DataSet
 		 *
-		 * @param   	$source				data source
-		 * @param   	$da					DataAdapter
-		 * @param   	$lock_type			lock type as constant of DataSetType::OpenDynamic(), DataSetType::OpenStatic(), or DataSetType::OpenReadonly()
+		 * @param   srray	$data				data source as array
+		 *
+		 * @return			DataSet
+		 */
+		static public function createFromArray( array $data )
+		{
+			$dataSet = new \System\DB\DataSet();
+
+			// validate data
+			if((bool)count(array_filter(array_keys($data[0]), 'is_string')))
+			{
+				$fields = array();
+				$fieldMeta = array();
+				foreach(array_keys($data[0]) as $field)
+				{
+					$fields[] = $field;
+					$fieldMeta[] = new \System\DB\ColumnSchema(array(
+						'name' => (string) $field,
+						'type' => 'string',
+						'notNull' => false,
+						'primaryKey' => false,
+						'foreignKey' => false,
+						'unique' => false,
+						'numeric' => false,
+						'string' => true,
+						'integer' => false,
+						'real' => false,
+						'date' => false,
+						'time' => false,
+						'datetime' => false,
+						'boolean' => false,
+						'autoIncrement' => false,
+						'blob' => false));
+				}
+
+				$dataSet->setFields($fields);
+				$dataSet->setFieldMeta($fieldMeta);
+				$dataSet->setRows($data);
+			}
+			else
+			{
+				throw new \System\Base\InvalidOperationException("Invalid array passed to DataSet::createFromArray(array())");
+			}
+
+			return $dataSet;
+		}
+
+
+		/**
+		 * create new DataSet
+		 *
+		 * @param   mixed		$source		data source
+		 * @param   DataAdapter	$da			DataAdapter
+		 * @param   DataSetType	$lock_type	lock type as constant of DataSetType::OpenDynamic(), DataSetType::OpenStatic(), or DataSetType::OpenReadonly()
 		 *
 		 * @return  	DataSet
 		 */
@@ -546,8 +596,6 @@
 		 */
 		public function seek( $field, $value, $case_insensitive = 0 )
 		{
-			$count = count($this->rows);
-
 			// loop through rows
 			for( $i=0; $i < count($this->rows); $i++ )
 			{
@@ -645,7 +693,7 @@
 		 * @param  int		$case_insensitive	specifies case insentitive
 		 * @return void
 		 */
-		public function filter( $column, $operator, $value = '', $case_insensitive = false )
+		public function filter( $column, $operator, $value, $case_insensitive = false )
 		{
 			// alias
 			if( $operator === '=' ) $operator = '==';
@@ -690,7 +738,19 @@
 							if( $case_insensitive )
 							{
 								$cmp_value = strtolower( $this->rows[$i][$field->name] );
-								$value = strtolower( $value );
+								if(is_array($value))
+								{
+									$tmp_value = array();
+									foreach($value as $var)
+									{
+										$tmp_value[] = strtolower($var);
+									}
+									$value = $tmp_value;
+								}
+								else
+								{
+									$value = strtolower( $value );
+								}
 							}
 							else
 							{
@@ -759,13 +819,29 @@
 							}
 							else
 							{
-								// compare strings
-								eval(
-									'if( $cmp_value' . $operator . '"' . (string) $value . '")
+								if(is_array($value))
+								{
+									foreach($value as $var)
 									{
-										$tmp_array[] = $this->rows[$i];
-									}'
-								);
+										// compare strings
+										eval(
+											'if( $cmp_value' . $operator . '"' . (string) $var . '")
+											{
+												$tmp_array[] = $this->rows[$i];
+											}'
+										);
+									}
+								}
+								else
+								{
+									// compare strings
+									eval(
+										'if( $cmp_value' . $operator . '"' . (string) $value . '")
+										{
+											$tmp_array[] = $this->rows[$i];
+										}'
+									);
+								}
 							}
 						}
 						else
@@ -967,7 +1043,7 @@
 
 					return $min;
 				}
-				elseif( $field->datetime || $field->date || $fields->time )
+				elseif( $field->datetime || $field->date || $field->time )
 				{
 					for( $i = 0, $count = count($this->rows); $i < $count; $i++ )
 					{
@@ -1050,6 +1126,18 @@
 		 */
 		public function requery()
 		{
+			trigger_error("DataSet::requery() is deprecated, use DataSet::refresh() instead", E_USER_DEPRECATED);
+			$this->refresh();
+		}
+
+
+		/**
+		 * refresh data from data source
+		 *
+		 * @return void
+		 */
+		public function refresh()
+		{
 			if( $this->lockType == DataSetType::OpenDynamic() )
 			{
 				$this->table = '';
@@ -1064,6 +1152,35 @@
 				$this->updateRowData();
 				$this->first();
 			}
+		}
+
+
+		/**
+		 * write data to data source
+		 *
+		 * @return void
+		 */
+		public function save()
+		{
+			if( isset( $this->rows[$this->cursor] ))
+			{
+				return $this->update();
+			}
+			else
+			{
+				return $this->insert();
+			}
+		}
+
+
+		/**
+		 * return fields as array
+		 *
+		 * @return void
+		 */
+		public function fields()
+		{
+			return $this->fields;
 		}
 
 
@@ -1297,14 +1414,8 @@
 				$xmlFieldBoolean = new \System\XML\XMLEntity( 'boolean' );
 				$xmlFieldBoolean->value = $field->boolean?'true':'false';
 
-				$xmlFieldBlob = new \System\XML\XMLEntity( 'blob' );
-				$xmlFieldBlob->value = $field->blob?'true':'false';
-
 				$xmlFieldPrimaryKey = new \System\XML\XMLEntity( 'primaryKey' );
 				$xmlFieldPrimaryKey->value = $field->primaryKey?'true':'false';
-
-				$xmlFieldAutoIncrement = new \System\XML\XMLEntity( 'autoIncrement' );
-				$xmlFieldAutoIncrement->value = $field->autoIncrement?'true':'false';
 
 				$xmlField->addChild( $xmlFieldName );
 				$xmlField->addChild( $xmlFieldLength );
@@ -1312,9 +1423,7 @@
 				$xmlField->addChild( $xmlFieldNumeric );
 				$xmlField->addChild( $xmlFieldDateTime );
 				$xmlField->addChild( $xmlFieldBoolean );
-				$xmlField->addChild( $xmlFieldBlob );
 				$xmlField->addChild( $xmlFieldPrimaryKey );
-				$xmlField->addChild( $xmlFieldAutoIncrement );
 
 				$xmlFields->addChild( $xmlField );
 			}

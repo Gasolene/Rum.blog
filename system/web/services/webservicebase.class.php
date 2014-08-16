@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\Services;
 
@@ -11,12 +11,27 @@
 	/**
 	 * This class handles all remote procedure calls for a web service
 	 *
+	 * @property string $charaset specifies the character set for the soap message, default is ISO-8859-1
+	 * @property string $contentType specifies the content type
+	 * 
 	 * @package			PHPRum
 	 * @subpackage		Web
 	 * @author			Darnell Shinbine
 	 */
 	abstract class WebServiceBase extends \System\Web\ControllerBase
 	{
+		/**
+		 * specifies the character set for the soap message
+		 * @var string
+		 */
+		protected $charaset = 'UTF-8';
+
+		/**
+		 * specifies the character set for the soap message
+		 * @var string
+		 */
+		protected $contentType = 'application/xml';
+
 		/**
 		 * Contains an array of RPC method calls
 		 * @var string
@@ -50,7 +65,7 @@
 		 * @param   HTTPRequest		&$request	HTTPRequest object
 		 * @return  View			view control
 		 */
-		final public function getView( \System\Web\HTTPRequest &$request )
+		public function getView( \System\Web\HTTPRequest &$request )
 		{
 			// Configure Web Service
 			$this->view = new \System\Web\WebControls\View('view');
@@ -62,6 +77,8 @@
 			if(isset($GLOBALS["__DISABLE_HEADER_REDIRECTS__"])) return;
 			$this->handle($request);
 
+			$this->view->contentType = $this->contentType;
+			$this->view->charset = $this->charaset;
 			return $this->view;
 		}
 

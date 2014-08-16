@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -183,13 +183,11 @@
 			if( isset( $request[$treeViewControlId.'__'.$this->id.'_expand'] ))
 			{
 				$this->expanded = true;
-				unset( $request[$treeViewControlId.'__'.$this->id.'_expand'] );
 			}
 
 			if( isset( $request[$treeViewControlId.'__'.$this->id.'_collapse'] ))
 			{
 				$this->expanded = false;
-				unset( $request[$treeViewControlId.'__'.$this->id.'_collapse'] );
 			}
 
 			for( $i = 0, $count = $this->childNodes->count; $i < $count; $i++ )

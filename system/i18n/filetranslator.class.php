@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\I18N;
 
@@ -61,7 +61,7 @@
 
 			foreach($this->langs->children as $lang)
 			{
-				if($lang["lang"]==$this->langs)
+				if($lang["lang"]==$this->lang)
 				{
 					foreach($lang->children as $string)
 					{
@@ -72,6 +72,9 @@
 					}
 				}
 			}
+
+			// raise notice
+			trigger_error("string id {$stringId} not found in langs.xml file, using default", E_USER_NOTICE);
 
 			return $default;
 		}

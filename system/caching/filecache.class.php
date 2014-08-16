@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Caching;
 
@@ -64,27 +64,31 @@
 		 */
 		public function put( $id, $value, $expires = 0 )
 		{
-			if(file_exists(__CACHE_PATH__))
-			{
-				$file = $this->getPath( (string)$id );
-				$value = time() + (int)$expires . "\n" . \serialize( $value );
+			if($expires) {
+				$expires = time() + (int)$expires;
+			}
+			else {
+				$expires = 2147483647;
+			}
 
-				$fp = @fopen( $file, 'wb+' );
-				if( $fp )
+			$file = $this->getPath( (string)$id );
+			$value = $expires . "\n" . \serialize( $value );
+
+			$fp = @fopen( $file, 'wb+' );
+			if( $fp )
+			{
+				if( fwrite( $fp, $value, strlen( $value )) !== false )
 				{
-					if( fwrite( $fp, $value, strlen( $value )) !== false )
-					{
-						fclose( $fp );
-					}
-					else
-					{
-						throw new CacheException("Could not write to cache file {$file}");
-					}
+					fclose( $fp );
+				}
+				else
+				{
+					throw new \System\Utils\FileNotWritableException("Could not write to log file `{$file}`, check that directory " . __CACHE_PATH__ . " is writable");
 				}
 			}
 			else
 			{
-				mkdir(__CACHE_PATH__);
+				throw new \System\Utils\FileNotWritableException("Could not write to log file `{$file}`, check that directory " . __CACHE_PATH__ . " is writable");
 			}
 		}
 

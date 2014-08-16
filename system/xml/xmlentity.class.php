@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\XML;
 	use \ArrayAccess;
@@ -448,8 +448,8 @@
 			/* add attributes */
 			foreach( $this->attributes as $key => $value ) {
 				$key   = \Rum::escape( strtolower( $key ));
-				$value = \Rum::escape( $value );
-				$xml  .= " $key=\"$value\"";
+				$value = trim(\Rum::escape( $value ));
+				$xml  .= " $key=\"{$value}\"";
 			}
 
 			/* add elements */
@@ -472,8 +472,10 @@
 			else {
 
 				/* add text */
-				if( $this->getEntityValue($charset) ) {
-					$xml .= '>' . $this->getEntityValue($charset) . '</' . \Rum::escape( \strtolower( $this->name )) . '>' . \System\Base\CARAGERETURN;
+				$value = $this->getEntityValue($charset);
+
+				if( strlen($value)>0 ) {
+					$xml .= '>' . $value . '</' . \Rum::escape( \strtolower( $this->name )) . '>' . \System\Base\CARAGERETURN;
 				}
 				elseif( $this->cdata ) {
 					$xml .= '><![CDATA[' . $this->cdata . ']]></' . \Rum::escape( \strtolower( $this->name )) . '>' . \System\Base\CARAGERETURN;
@@ -502,14 +504,7 @@
 			// set render time attributes
 			foreach( $args as $key => $value )
 			{
-				if( isset( $this->attributes[strtolower($key)] ))
-				{
-					$this->attributes[strtolower($key)] .= $value;
-				}
-				else
-				{
-					$this->attributes[strtolower($key)] = $value;
-				}
+				$this->attributes[strtolower($key)] = $value;
 			}
 
 			return $this->getXMLString();

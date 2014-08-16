@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Validators;
 
@@ -20,7 +20,13 @@
 	class FileSizeValidator extends ValidatorBase
 	{
 		/**
-		 * maxSize
+		 * minimum fileszie
+		 * @var double
+		 */
+		private $minSize;
+
+		/**
+		 * maximum fileszie
 		 * @var double
 		 */
 		private $maxSize;
@@ -29,15 +35,17 @@
 		/**
 		 * FileSizeValidator
 		 *
-		 * @param  double	$maxSize	max size
+		 * @param  double	$maxSize maximum size in Bytes
+		 * @param  double	$maxSize minimum size in Bytes, defaults to 0
 		 * @param  string	$errorMessage error message
 		 * @return void
 		 */
-		public function __construct( $maxSize, $errorMessage = '')
+		public function __construct( $maxSize, $minSize = 0, $errorMessage = '')
 		{
 			parent::__construct($errorMessage);
 
 			$this->maxSize = (double) $maxSize;
+			$this->minSize = (double) $minSize;
 		}
 
 
@@ -48,39 +56,29 @@
 		 */
 		protected function onLoad()
 		{
-			if($this->controlToValidate)
-			{
-				$this->errorMessage = $this->errorMessage?$this->errorMessage:"{$this->controlToValidate->label} " . \System\Base\ApplicationBase::getInstance()->translator->get('must_be_less_than', 'must be less than') . " {$this->maxSize}KB";
-			}
+			$this->errorMessage = $this->errorMessage?$this->errorMessage:$this->label.' '.str_replace('%n', "{$this->maxSize}KB", \System\Base\ApplicationBase::getInstance()->translator->get('must_be_less_than'));
 		}
 
 
 		/**
-		 * validates the control
+		 * validates the passed value
 		 *
+		 * @param  mixed $value value to validate
 		 * @return bool
 		 */
-		public function validate()
+		public function validate($value)
 		{
-			if($this->controlToValidate)
+			if( $value['size'] > $this->minSize )
 			{
-				if( isset( $_FILES[$this->controlToValidate->getHTMLControlIdString()] ))
+				if(( ( (int) $this->maxSize ) < (int) $value['size'] ) && (int) $this->maxSize > 0 )
 				{
-					if( $_FILES[$this->controlToValidate->getHTMLControlIdString()]['size'] > 0 )
-					{
-						if(( ( (int) $this->maxSize * 1024 ) < (int) $_FILES[$this->controlToValidate->getHTMLControlIdString()]['size'] ) && (int) $this->maxSize > 0 )
-						{
-							return false;
-						}
-					}
+					return false;
 				}
 
 				return true;
 			}
-			else
-			{
-				throw new \System\Base\InvalidOperationException("no control to validate");
-			}
+
+			return false;
 		}
 	}
 ?>

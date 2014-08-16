@@ -2,8 +2,8 @@
 	/**
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
-	 *
-	 *
+	 * @author			Darnell Shinbine
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web\WebControls;
 
@@ -22,9 +22,7 @@
 	 * @property string $encodeType form encoding type
 	 * @property string $forward controller to forward to
 	 * @property bool $ajaxPostBack specifies whether to perform ajax postback, Default is false
-	 * @property bool $ajaxValidation specifies whether to perform ajax validation, Default is false
-	 * @property bool $autoFocus specifies whether to auto focus
-	 * @property bool $hiddenField specifies whether to check for hidden honeypot field before processing request
+	 * @property string $honeyPot specifies the content of the honeypot field
 	 * @property string $submitted specifies if form was submitted
 	 * @property RequestParameterCollection $parameters form parameters
 	 *
@@ -66,28 +64,16 @@
 		protected $forward				= '';
 
 		/**
-		 * turn on or off auto focusing
-		 * @var bool
-		 */
-		protected $autoFocus			= false;
-
-		/**
 		 * turn on or off ajax post backs
 		 * @var bool
 		 */
 		protected $ajaxPostBack			= false;
 
 		/**
-		 * turn on or off ajax validation
+		 * specifies whether to check for hidden field before processing request
 		 * @var bool
 		 */
-		protected $ajaxValidation		= false;
-
-		/**
-		 * specifies whether to check for hidden honeypot field before processing request
-		 * @var bool
-		 */
-		protected $hiddenField			= false;
+		protected $honeyPot			= false;
 
 		/**
 		 * set if the form was submitted
@@ -119,7 +105,7 @@
 		{
 			parent::__construct( $controlId );
 
-			$this->action = \System\Web\WebApplicationBase::getInstance()->config->uri . '/';
+			$this->action = \Rum::config()->uri . '/';
 			$this->forward = \System\Web\WebApplicationBase::getInstance()->currentPage;
 			$this->parameters = array();
 
@@ -188,18 +174,24 @@
 			}
 			elseif( $field === 'ajaxValidation' )
 			{
-				$this->setAjaxValidation($value);
+				trigger_error("Form::ajaxValidation is deprecated, use ValidationMessage instead", E_USER_DEPRECATED);
 			}
 			elseif( $field === 'autoFocus' )
 			{
-				$this->autoFocus = (bool)$value;
+				trigger_error("Form::autoFocus is deprecated, use InputBase::autoFocus instead", E_USER_DEPRECATED);
 			}
 			elseif( $field === 'hiddenField' )
 			{
-				$this->hiddenField = (string)$value;
+				trigger_error("Form::hiddenField is deprecated, use Form::honeyPot instead", E_USER_DEPRECATED);
+				$this->honeyPot = (string)$value;
+			}
+			elseif( $field === 'honeyPot' )
+			{
+				$this->honeyPot = (string)$value;
 			}
 			elseif( $field === 'onPost' )
 			{
+				trigger_error("Form::onPost is deprecated", E_USER_DEPRECATED);
 				$this->onPost = (string)$value;
 			}
 			else
@@ -240,27 +232,38 @@
 			}
 			elseif( $field === 'autoFocus' )
 			{
-				return $this->autoFocus;
+				trigger_error("Form::autoFocus is deprecated, use InputBase::autoFocus instead", E_USER_DEPRECATED);
+				return false;
 			}
 			elseif( $field === 'ajaxPostBack' )
 			{
 				return $this->ajaxPostBack;
 			}
-			elseif( $field === 'ajaxValidation' )
+			elseif( $field === 'honeyPot' )
 			{
-				return $this->ajaxValidation;
-			}
-			elseif( $field === 'hiddenField' )
-			{
-				return $this->hiddenField;
+				return $this->honeyPot;
 			}
 			elseif( $field === 'onPost' )
 			{
+				trigger_error("Form::onPost is deprecated", E_USER_DEPRECATED);
 				return $this->onPost;
 			}
 			elseif( $field === 'submitted' )
 			{
 				return $this->submitted;
+			}
+			elseif( $field === 'submit' )
+			{
+				if(null===$this->findControl('submit')) {
+					trigger_error("ActiveRecordBase::form()->submit is deprecated, no longer generates a submit button", E_USER_DEPRECATED);
+					try {
+						$this->add(new Button('submit'));
+					}
+					catch(\Exception $e) {
+						throw new \System\Base\InvalidOperationException("ActiveRecordBase::form()->submit is no longer generated");
+					}
+				}
+				return $this->findControl('submit');
 			}
 			else
 			{
@@ -272,19 +275,12 @@
 		/**
 		 * adds child control to collection
 		 *
-		 * @param  InputBase		&$control		instance of an InputBase
+		 * @param  DataFieldControlBase		&$control		instance of an DataFieldControlBase
 		 * @return void
 		 */
 		final public function add( WebControlBase $control )
 		{
-			if( $control instanceof InputBase || $control instanceof Fieldset )
-			{
-				return parent::addControl($control);
-			}
-			else
-			{
-				throw new \System\Base\InvalidArgumentException("Argument 1 passed to ".get_class($this)."::add() must be an object of type InputBase or Fieldset");
-			}
+			return parent::addControl($control);
 		}
 
 
@@ -313,52 +309,39 @@
 				// loop through child controls
 				foreach( $this->controls as $childControl )
 				{
-					$childControl->fillDataSource( $this->dataSource );
+					if( $childControl instanceof DataFieldControlBase || $childControl instanceof Fieldset ) // TODO: Rem backwards compatability code
+					{
+						$childControl->fillDataSource( $this->dataSource );
+					}
 				}
 
-				if( $this->dataSource instanceof \System\DB\DataSet )
-				{
-					if( isset( $this->dataSource->rows[$this->dataSource->cursor] ))
-					{
-						return $this->dataSource->update();
-					}
-					else
-					{
-						return $this->dataSource->insert();
-					}
-				}
-				else
-				{
-					$this->dataSource->save();
-				}
+				$this->dataSource->save();
 			}
 			else
 			{
-				throw new \System\Base\InvalidOperationException("Form::update() called with null dataSource");
+				throw new \System\Base\InvalidOperationException("Form::save() called with null dataSource");
 			}
 		}
 
 
 		/**
-		 * validate all controls in form object
+		 * validate all controls in Form object
 		 *
 		 * @param  string $errMsg error message
 		 * @return bool
 		 */
-		public function validate(&$errMsg = '', InputBase &$controlToFocus = null)
+		public function validate(&$errMsg = '')
 		{
 			$valid = true;
 			for($i = 0; $i < $this->controls->count; $i++)
 			{
-				if( !$this->controls[$i]->validate( $errMsg, $controlToFocus ))
+				if( $this->controls[$i] instanceof InputBase || $this->controls[$i] instanceof Fieldset ) // TODO: Rem backwards compatability code
 				{
-					$valid = false;
+					if( !$this->controls[$i]->validate( $errMsg ))
+					{
+						$valid = false;
+					}
 				}
-			}
-
-			if( $this->autoFocus && !is_null( $controlToFocus ))
-			{
-				$controlToFocus->focus();
 			}
 
 			return $valid;
@@ -374,6 +357,7 @@
 		 */
 		public function start( $args = array() )
 		{
+			trigger_error("Form::start() is deprecated, use Form::begin() instead", E_USER_DEPRECATED);
 			$this->begin( $args );
 		}
 
@@ -429,19 +413,22 @@
 				else
 				{
 					// create list item
-					if( !$childControl->visible )
-					{
-						$dt = '<dt style="display:none;">';
-						$dd = '<dd style="display:none;">';
-					}
-					else
-					{
-						$dt = '<dt>';
-						$dd = '<dd>';
-					}
+//					if( !$childControl->visible )
+//					{
+//						$dt = '<dt style="display:none;">';
+//						$dd = '<dd style="display:none;">';
+//					}
+//					else
+//					{
+//						$dt = '<dt>';
+//						$dd = '<dd>';
+//					}
+
+					$dt = '<dt>';
+					$dd = '<dd>';
 
 					// create label
-					$dt .= '<label class="'.($childControl->attributes->contains("class")?$childControl->attributes["class"]:'').'" for="'.$childControl->defaultHTMLControlId.'">' . $childControl->label . '</label>';
+					$dt .= '<label for="'.$childControl->getHTMLControlId().'">' . $childControl->label . '</label>';
 
 					// Get input control
 					$dd .= $childControl->fetch();
@@ -453,12 +440,23 @@
 						$childControl->validate($errMsg);
 					}
 
-					$dd .= $childControl->fetchError();
+					$dd .= $childControl->fetchError(array('class'=>'warning'));
 
 					$dl .= $dt . '</dt>';
 					$dl .= $dd . '</dd>';
 				}
 			}
+
+			$dt = '<dt>';
+			$dd = '<dd>';
+
+			foreach( $buttons as $button )
+			{
+				$dd .= $button->fetch();
+			}
+
+			$dl .= $dt . '</dt>';
+			$dl .= $dd . '</dd>';
 
 			if($dl)
 			{
@@ -469,15 +467,6 @@
 				$fieldset .= '</dl>';
 				$fieldset .= '</fieldset>';
 			}
-
-			$fieldset .= '<div class="buttons">';
-
-			foreach( $buttons as $button )
-			{
-				$fieldset .= $button->fetch();
-			}
-
-			$fieldset .= '</div>';
 
 			$form->innerHtml .= $fieldset;
 
@@ -494,22 +483,24 @@
 		{
 			$form = $this->createDomObject( 'form' );
 
-			$form->setAttribute( 'id', $this->getHTMLControlIdString() );
+			$form->setAttribute( 'id', $this->getHTMLControlId() );
 			$form->setAttribute( 'action', $this->action );
 			$form->setAttribute( 'method', strtolower( $this->method ));
 			$form->setAttribute( 'enctype', $this->encodeType );
-			$form->appendAttribute( 'class', ' form' );
+//			$form->setAttribute( 'class', ' form' );
 
 			if( $this->_onsubmit )
 			{
-				$form->appendAttribute( 'onsubmit', $this->_onsubmit );
+				$form->setAttribute( 'onsubmit', $this->_onsubmit );
 			}
 
 			// public to check if form has been submitted
-			$this->parameters[$this->getHTMLControlIdString() . '__submit'] = '1';
+			$this->parameters[$this->getHTMLControlId() . '__submit'] = '1';
 
 			// send session id as http var
-			$this->parameters['PHPSESSID'] = session_id();
+			if( \Rum::config()->cookielessSession ) {
+				$this->parameters['PHPSESSID'] = session_id();
+			}
 
 			// get current variables
 			$vars = array_keys( \System\Web\HTTPRequest::$request );
@@ -523,7 +514,7 @@
 					$obj = $this->controls->itemAt($y);
 
 					// if request public = object name, unset found flag
-					if( $obj->getHTMLControlIdString() === $vars[$x] )
+					if( $obj->getHTMLControlId() === $vars[$x] )
 					{
 						// found instance
 						$b=false;
@@ -531,7 +522,7 @@
 				}
 
 				// if not found in object
-				if( $b && $vars[$x] != $this->getHTMLControlIdString() )
+				if( $b && $vars[$x] != $this->getHTMLControlId() )
 				{
 					$this->parameters[$vars[$x]] = \System\Web\HTTPRequest::$request[$vars[$x]];
 				}
@@ -540,12 +531,12 @@
 			$hiddenElements = '';
 
 			// set forward controller
-			if( isset( $this->parameters[\System\Web\WebApplicationBase::getInstance()->config->requestParameter] ))
+			if( isset( $this->parameters[\Rum::config()->requestParameter] ))
 			{
-				unset( $this->parameters[\System\Web\WebApplicationBase::getInstance()->config->requestParameter] );
+				unset( $this->parameters[\Rum::config()->requestParameter] );
 			}
 
-			$this->parameters[\System\Web\WebApplicationBase::getInstance()->config->requestParameter] = $this->forward;
+			$this->parameters[\Rum::config()->requestParameter] = $this->forward;
 
 			foreach( $this->parameters as $field => $value )
 			{
@@ -565,7 +556,7 @@
 				}
 			}
 
-			if( $this->hiddenField )
+			if( $this->honeyPot )
 			{
 				$hiddenElements .= "<div class=\"hp\"><input type=\"text\" name=\"".GOTCHAFIELD."\" /></div>";
 			}
@@ -585,18 +576,10 @@
 		{
 			parent::onLoad();
 
-			$page = $this->getParentByType('\System\Web\WebControls\Page');
-			$page->addScript( \System\Web\WebApplicationBase::getInstance()->config->assets . '/form/form.js' );
-
-			if($this->hiddenField)
-			{
-				$page->addLink( \System\Web\WebApplicationBase::getInstance()->config->assets . '/form/form.css' );
-			}
-
 			// perform ajax request
 			if( $this->ajaxPostBack )
 			{
-				$this->_onsubmit = "return PHPRum.submitForm(this, " . ( $this->ajaxEventHandler?'\'' . addslashes( (string) $this->ajaxEventHandler ) . '\'':'PHPRum.evalFormResponse);' );
+				$this->_onsubmit = "return Rum.submit(this, " . ( 'Rum.evalFormResponse);' );
 			}
 		}
 
@@ -609,9 +592,9 @@
 		 */
 		protected function onRequest( array &$request )
 		{
-			if( isset( $request[ $this->getHTMLControlIdString() . '__submit'] ))
+			if( isset( $request[ $this->getHTMLControlId() . '__submit'] ))
 			{
-				if( $this->hiddenField )
+				if( $this->honeyPot )
 				{
 					if( isset( $request[GOTCHAFIELD] )?!$request[GOTCHAFIELD]:false )
 					{
@@ -627,36 +610,7 @@
 					$this->submitted = true;
 				}
 
-				unset( $request[ $this->getHTMLControlIdString() . '__submit'] );
-			}
-			elseif( $this->autoFocus && isset( $this->controls[0] ))
-			{
-				// auto focus first control
-				$childControl = $this->controls[0];
-				$childControl->focus();
-			}
-
-			if( $this->ajaxPostBack && $this->submitted )
-			{
-				$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("");
-/**
-				if($this->autoFocus)
-				{
-					$this->validate($errMsg);
-
-					foreach( $this->controls as $childControl )
-					{
-						if( $childControl instanceof InputBase )
-						{
-							if( $childControl->focus )
-							{
-								$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("document.getElementById('{$childControl->getHTMLControlIdString()}').focus()");
-								break;
-							}
-						}
-					}
-				}
- */
+				unset( $request[ $this->getHTMLControlId() . '__submit'] );
 			}
 		}
 
@@ -693,7 +647,25 @@
 			// loop through input controls
 			foreach( $this->controls as $childControl )
 			{
-				$childControl->readDataSource( $this->dataSource );
+				if( $childControl instanceof DataFieldControlBase || $childControl instanceof Fieldset ) // TODO: Remove backwards compatibility code
+				{
+					$childControl->readDataSource( $this->dataSource );
+				}
+			}
+		}
+
+
+		/**
+		 * Event called on ajax callback
+		 *
+		 * @return void
+		 */
+		protected function onUpdateAjax()
+		{
+			// loop through input controls
+			foreach( $this->controls as $childControl )
+			{
+				$childControl->needsUpdating = true;
 			}
 		}
 
@@ -709,7 +681,10 @@
 			$this->ajaxPostBack = (bool)$ajaxPostBack;
 			foreach( $this->controls as $childControl )
 			{
-				$childControl->ajaxPostBack = (bool)$ajaxPostBack;
+				if( $childControl instanceof InputBase || $childControl instanceof Fieldset ) // TODO: rem backwards compatability
+				{
+					$childControl->ajaxPostBack = (bool)$ajaxPostBack;
+				}
 			}
 		}
 
@@ -719,14 +694,18 @@
 		 *
 		 * @param  bool $ajaxValidation ajax validation state
 		 * @return void
-		 */
+		 * /
 		private function setAjaxValidation($ajaxValidation = true)
 		{
 			$this->ajaxValidation = (bool)$ajaxValidation;
 			foreach( $this->controls as $childControl )
 			{
-				$childControl->ajaxValidation = (bool)$ajaxValidation;
+				if( $childControl instanceof InputBase || $childControl instanceof Fieldset ) // TODO: rem backwards compatability
+				{
+					$childControl->ajaxValidation = (bool)$ajaxValidation;
+				}
 			}
 		}
+		*/
 	}
 ?>

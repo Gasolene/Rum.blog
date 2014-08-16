@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Web;
 
@@ -52,6 +52,19 @@
 
 
 		/**
+		 * Constructor
+		 *
+		 * @param   string		$controllerId	Controller Id
+		 * @return  void
+		 * /
+		final public function __construct( $controllerId )
+		{
+			parent::__construct($controllerId);
+			$this->events->add(new Events\TimerEvent());
+		}
+
+
+		/**
 		 * gets object property
 		 *
 		 * @param  string	$field		name of field
@@ -60,23 +73,7 @@
 		 */
 		final public function __get( $field )
 		{
-			if( $field === 'controllerId' )
-			{
-				return (string)$this->controllerId;
-			}
-			elseif( $field === 'outputCache' )
-			{
-				return (int)$this->outputCache;
-			}
-			elseif( $field === 'allowRoles' )
-			{
-				return $this->allowRoles;
-			}
-			elseif( $field === 'denyRoles' )
-			{
-				return $this->denyRoles;
-			}
-			elseif( $field === 'isPostBack' )
+			if( $field === 'isPostBack' )
 			{
 				return (bool)$this->isPostBack;
 			}
@@ -92,10 +89,6 @@
 			{
 				return $this->theme;
 			}
-			elseif( $field === 'events' )
-			{
-				return $this->events;
-			}
 			else
 			{
 				if( $this->page )
@@ -106,15 +99,9 @@
 					{
 						return $control;
 					}
-					else
-					{
-						throw new \System\Base\BadMemberCallException("call to undefined property $field in ".get_class($this));
-					}
 				}
-				else
-				{
-					throw new \System\Base\BadMemberCallException("call to undefined property $field in ".get_class($this));
-				}
+
+				return parent::__get($field);
 			}
 		}
 
@@ -139,9 +126,9 @@
 		 */
 		public function getView( \System\Web\HTTPRequest &$request )
 		{
-			$this->theme = $this->theme?$this->theme:\System\Web\WebApplicationBase::getInstance()->config->defaultTheme;
+			$this->theme = $this->theme?$this->theme:\Rum::config()->defaultTheme;
 
-			if(\System\Web\WebApplicationBase::getInstance()->config->viewStateMethod == 'cookies')
+			if(\Rum::config()->viewStateMethod == 'cookies')
 			{
 				$viewState = $request->getCookieData();
 			}
@@ -168,24 +155,51 @@
 			$this->events->raise(new Events\PageControllerCreatePageEvent(), $this);
 
 			// set template implicitly
-			$this->page->template = \System\Web\WebApplicationBase::getInstance()->config->views . '/' . strtolower( $this->controllerId ) . __TEMPLATE_EXTENSION__;
+			$this->page->template = \Rum::config()->views . '/' . strtolower( $this->controllerId ) . __TEMPLATE_EXTENSION__;
 
 			// include jscripts
-			if( \System\Web\WebApplicationBase::getInstance()->config->state == \System\Base\AppState::Debug() )
+			if( \Rum::config()->state == \System\Base\AppState::Debug() )
 			{
-				$this->page->addScript( \System\Web\WebApplicationBase::getInstance()->config->assets . '/debug/debug.js' );
-				$this->page->addLink( \System\Web\WebApplicationBase::getInstance()->config->assets . '/debug/debug.css' );
+				$this->page->addScript( WebApplicationBase::getInstance()->getPageURI(__MODULE_REQUEST_PARAMETER__, array('id'=>'core', 'type'=>'text/javascript')) . '&asset=debug_tools/debug.js' );
+				$this->page->addLink( WebApplicationBase::getInstance()->getPageURI(__MODULE_REQUEST_PARAMETER__, array('id'=>'core', 'type'=>'text/css')) . '&asset=debug_tools/debug.css' );
+			}
+
+			$this->page->addScript( \System\Web\WebApplicationBase::getInstance()->getPageURI(__MODULE_REQUEST_PARAMETER__, array('id'=>'core', 'type'=>'text/javascript')) . '&asset=rum.js' );
+			$this->page->onload .= 'Rum.init(\''.__ASYNC_REQUEST_PARAMETER__.'\', '.__VALIDATION_TIMEOUT__.', '.__FLASH_MSG_TIMEOUT__.');';
+
+			// combine all css files for theme
+			$themeStatus = \System\Base\Build::get('theme_built');
+			if(is_null($themeStatus))
+			{
+				$content = '';
+				foreach( (array)glob( \Rum::config()->themesPath . '/' . $this->theme . "/*.css" ) as $stylesheet ) {
+					if($stylesheet != \Rum::config()->themesPath . '/' . $this->theme . '/combined.css') {
+						$content .= file_get_contents($stylesheet);
+					}
+				}
+				if(is_writable(\Rum::config()->themesPath . '/' . $this->theme)) {
+					file_put_contents(\Rum::config()->themesPath . '/' . $this->theme . '/combined.css', str_replace('; ',';',str_replace(' }','}',str_replace('{ ','{',str_replace(array("\r\n","\r","\n","\t",'  ','    ','    '),"",preg_replace('!/\*[^*]*\*+([^/][^*]*\*+)*/!','',$content))))));
+				}
+				if(!\Rum::app()->debug) {
+					if(file_exists(\Rum::config()->themesPath . '/' . $this->theme . '/combined.css')) {
+						\System\Base\Build::put('theme_built', TRUE);
+					}
+					else {
+						\System\Base\Build::put('theme_built', FALSE);
+					}
+				}
 			}
 
 			// include all css files for theme
-			foreach( glob( \System\Web\WebApplicationBase::getInstance()->config->htdocs . substr( \System\Web\WebApplicationBase::getInstance()->config->themes, strlen( \System\Web\WebApplicationBase::getInstance()->config->uri )) . '/' . $this->theme . "/*.css" ) as $stylesheet )
-			{
-				$this->page->addLink( \System\Web\WebApplicationBase::getInstance()->config->themes . '/' . $this->theme . strrchr( $stylesheet, '/' ));
+			if($themeStatus===TRUE) {
+				$this->page->addLink( \Rum::config()->themesURI . '/' . $this->theme . '/combined.css' );
 			}
-			// include all js files for theme
-			foreach( glob( \System\Web\WebApplicationBase::getInstance()->config->htdocs . substr( \System\Web\WebApplicationBase::getInstance()->config->themes, strlen( \System\Web\WebApplicationBase::getInstance()->config->uri )) . '/' . $this->theme . "/scripts/*.js" ) as $script )
-			{
-				$this->page->addScript( \System\Web\WebApplicationBase::getInstance()->config->themes . '/' . $this->theme . '/scripts' . strrchr( $script, '/' ));
+			else {
+				foreach( (array)glob( \Rum::config()->themesPath . '/' . $this->theme . "/*.css" ) as $stylesheet ) {
+					if(strrchr( $stylesheet, '/' ) !== '/combined.css') {
+						$this->page->addLink( \Rum::config()->themesURI . '/' . $this->theme . strrchr( $stylesheet, '/' ));
+					}
+				}
 			}
 
 			/**
@@ -288,8 +302,7 @@
 					. '_masterviewstate'] = serialize( $viewStateArray );
 			}
 
-
-			$config = \System\Web\WebApplicationBase::getInstance()->config;
+			$config = \Rum::config();
 			if($config->viewStateMethod == 'cookies')
 			{
 				foreach($viewState as $param=>$values)
@@ -307,32 +320,28 @@
 
 				if(\System\Web\WebApplicationBase::getInstance()->messages->count>0)
 				{
-					$this->page->loadAjaxJScriptBuffer("var ul = document.getElementById('messages');");
-					//$this->page->loadAjaxJScriptBuffer("if(ul){if(ul.hasChildNodes()){while(ul.childNodes.length>=1){ul.removeChild(ul.firstChild);}}}");
-
 					foreach(\System\Web\WebApplicationBase::getInstance()->messages as $msg)
 					{
-						$id = 'm'.uniqid();
-						$this->page->loadAjaxJScriptBuffer("var li = document.createElement('li');");
-						$this->page->loadAjaxJScriptBuffer("li.setAttribute('id', '{$id}');");
-						$this->page->loadAjaxJScriptBuffer("li.setAttribute('class', '".\strtolower($msg->type)."');");
-						$this->page->loadAjaxJScriptBuffer("li.setAttribute('onclick', 'PHPRum.fadeOut(this);this.onclick=null;');");
-						$this->page->loadAjaxJScriptBuffer("li.style.display='none';");
-						$this->page->loadAjaxJScriptBuffer("li.innerHTML = '".\str_replace("\n", '', \str_replace("\r", '', \nl2br(\addslashes($msg->message))))."';");
-						$this->page->loadAjaxJScriptBuffer("if(ul) ul.appendChild(li);");
-						$this->page->loadAjaxJScriptBuffer("PHPRum.fadeIn(document.getElementById('{$id}'));");
+						$this->page->loadAjaxJScriptBuffer("Rum.flash( '".\str_replace("\n", '', \str_replace("\r", '', \addslashes($msg->message)))."', '".\strtolower($msg->type)."');");
 					}
 
-					\System\Web\WebApplicationBase::getInstance()->messages->removeAll();
+					//\System\Web\WebApplicationBase::getInstance()->messages->removeAll();
 				}
 
 				if(\System\Web\WebApplicationBase::getInstance()->forwardURI)
 				{
 					$url = \System\Web\WebApplicationBase::getInstance()->getPageURI( \System\Web\WebApplicationBase::getInstance()->forwardURI, \System\Web\WebApplicationBase::getInstance()->forwardParams );
-					$this->page->loadAjaxJScriptBuffer("location.href='".$url."';");
+					$this->page->loadAjaxJScriptBuffer("Rum.forward('".$url."');");
 
-					// clear forward
 					\System\Web\WebApplicationBase::getInstance()->clearForwardPage();
+				}
+
+				if(\System\Web\WebApplicationBase::getInstance()->trace)
+				{
+					foreach(\System\Web\WebApplicationBase::getInstance()->trace as $trace)
+					{
+						$this->page->loadAjaxJScriptBuffer("console.log('".\str_replace("\n", '', \str_replace("\r", '', \nl2br(\addslashes($trace))))."');");
+					}
 				}
 
 				// replace output with ajax buffer output

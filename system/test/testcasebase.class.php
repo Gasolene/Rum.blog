@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Test;
 	use \UnitTestCase;
@@ -177,7 +177,7 @@
 						{
 							try
 							{
-								\System\Base\ApplicationBase::getInstance()->dataAdapter->queryBuilder()->delete()->from($table)->runQuery();
+								\System\Base\ApplicationBase::getInstance()->dataAdapter->queryBuilder()->delete()->from($table)->execute();
 								unset($tables[$i]);
 								$tables = \array_values($tables);
 							}
@@ -215,9 +215,9 @@
 						}
 					}
 				}
-			}
 
-			\System\Base\ApplicationBase::getInstance()->dataAdapter->rebuildSchema();
+				\System\Base\ApplicationBase::getInstance()->dataAdapter->rebuildSchema();
+			}
 		}
 
 
@@ -231,7 +231,7 @@
 		{
 			if($fixture)
 			{
-				$tables = \System\Base\ApplicationBase::getInstance()->dataAdapter->getSchema()->tableNames;
+				$tables = \System\Base\ApplicationBase::getInstance()->dataAdapter->buildSchema()->tableNames;
 				$xmlParser = new \System\XML\XMLParser();
 				$fail = false;
 
@@ -268,7 +268,7 @@
 							\System\Base\ApplicationBase::getInstance()->dataAdapter->queryBuilder()
 								->insertInto($this->_arrayLsearch( $record->name, $tables ), $fieldnames)
 								->values($fieldvalues)
-								->runQuery();
+								->execute();
 						}
 						catch(SQLException $e)
 						{
@@ -332,7 +332,15 @@
 
 				if( $sql )
 				{
-					\System\Base\ApplicationBase::getInstance()->dataAdapter->executeBatch( $sql );
+					if(	\System\Base\ApplicationBase::getInstance()->dataAdapter instanceof \System\DB\MySQLi\MySQLiDataAdapter ||
+						\System\Base\ApplicationBase::getInstance()->dataAdapter instanceof \System\DB\MySQL\MySQLDataAdapter)
+					{
+						\System\Base\ApplicationBase::getInstance()->dataAdapter->executeBatch( $sql );
+					}
+					else
+					{
+						\System\Base\ApplicationBase::getInstance()->dataAdapter->execute( $sql );
+					}
 				}
 				else
 				{

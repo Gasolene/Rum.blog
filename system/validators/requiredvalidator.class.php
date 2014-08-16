@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2011
+	 * @copyright		Copyright (c) 2013
 	 */
 	namespace System\Validators;
 
@@ -26,28 +26,25 @@
 		 */
 		protected function onLoad()
 		{
-			if($this->controlToValidate)
-			{
-				$this->errorMessage = $this->errorMessage?$this->errorMessage:"{$this->controlToValidate->label} " . \System\Base\ApplicationBase::getInstance()->translator->get('is_required', 'is required');
-				$this->controlToValidate->attributes->append('class', ' required');
-			}
+			$this->errorMessage = $this->errorMessage?$this->errorMessage:$this->label.' '.\System\Base\ApplicationBase::getInstance()->translator->get('is_required');
 		}
 
 
 		/**
-		 * validates the control
+		 * validates the passed value
 		 *
+		 * @param  mixed $value value to validate
 		 * @return bool
 		 */
-		public function validate()
+		public function validate($value)
 		{
-			if($this->controlToValidate)
+			if(is_array($value))
 			{
-				return (bool)$this->controlToValidate->value || $this->controlToValidate->value === '0';
+				return (bool)$value || $value === '0';
 			}
 			else
 			{
-				throw new \System\Base\InvalidOperationException("no control to validate");
+				return (bool)trim($value) || trim($value) === '0';
 			}
 		}
 	}
