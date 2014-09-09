@@ -7,10 +7,10 @@
                     <div class="row bloginfo">
                         <div class="col-lg-8 col-md-8 col-xs-12 col-sm-8 post1">
                             <div>
-                                <div class="postdate pull-left">
+                                <div class="postdate">
                                     <div class="month"><?=date('F j, Y', strtotime($entry["datetime"]))?></div>
                                 </div>
-                                <div class="posttext pull-right">
+                                <div class="posttext">
                                     <h3><?=htmlentities($entry["title"])?></h3>
                                     <p><?=htmlentities($entry["body"])?></p>
 

@@ -8,10 +8,11 @@
 		{
 			$this->page->add(new \System\Web\WebControls\ListView('entries'));
 			$this->page->entries->dataField = 'entry_id';
-			$this->page->entries->itemText = "'<div class=\"postdate pull-left\">
+			$this->page->entries->itemText = "'
+								<div class=\"postdate\">
                                     <div class=\"month\">'.\date('F j, Y', \strtotime(%datetime%)).'</div>
                                 </div>
-                                <div class=\"posttext pull-right\">
+                                <div class=\"posttext\">
                                     <h3>'.\htmlentities(%title%).'</h3>
                                     <p>
 										'.\\nl2br(\htmlentities(%body%)).'
@@ -47,6 +48,7 @@
 			{
 				$this->page->form->save();
 				$this->page->entries->needsUpdating = true;
+				$this->page->entries->refreshDataSource();
 			}
 			else
 			{

@@ -8,8 +8,9 @@
 		{
 			$this->page->add(new \System\Web\WebControls\ListView('comments'));
 			$this->page->comments->dataField = 'comment_id';
-			$this->page->comments->itemText = "'<div class=\"comment\">
-                                    <div class=\"avatarright pull-right\">
+			$this->page->comments->itemText = "'
+									<div class=\"comment\">
+                                    <div class=\"avatarright\">
 
                                         <div class=\"heading\">
                                             <div class=\"name pull-left\">'.\\htmlentities(%author%).'</div>
