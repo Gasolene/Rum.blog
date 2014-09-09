@@ -10,7 +10,7 @@
 	 * The MigrationBase exposes 1 public property that must be defined in the sub class
 	 * @property int $version Specifies the db version number
 	 */
-	class Create_db extends MigrationBase
+	class v001_create_entries_table extends MigrationBase
 	{
 		/**
 		 * Specifies the db version number
@@ -24,18 +24,7 @@
 		 */
 		public function up()
 		{
-			// implement here
-			$this->db->executeBatch("
-CREATE TABLE `comments` (
-  `comment_id` INT(10) unsigned NOT NULL auto_increment,
-  `entry_id` INT(10) unsigned NOT NULL,
-  `author` VARCHAR(45) NOT NULL,
-  `body` TEXT NOT NULL,
-  `datetime` DATETIME NOT NULL,
-  PRIMARY KEY  (`comment_id`),
-  KEY `post_id` (`entry_id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
-
+			return \Rum::db()->prepare("
 CREATE TABLE `entries` (
   `entry_id` INT(11) NOT NULL auto_increment,
   `title` VARCHAR(45) NOT NULL,
@@ -51,7 +40,7 @@ CREATE TABLE `entries` (
 		 */
 		public function down()
 		{
-			$this->db->executeBatch("DROP TABLE `comments`, `entries`;");
+			return \Rum::db()->prepare("DROP TABLE `entries`;");
 		}
 	}
 ?>
