@@ -46,7 +46,7 @@
      If @friendly-uris=true,  URL looks like: /home/content/5
      If @friendly-uris=false, URL looks like: /index.php?page=home/content&id=5
   -->
-  <request                   default = "Blog"
+  <request                   default = "Index"
                        friendly-uris = "true" />
 
  <!--

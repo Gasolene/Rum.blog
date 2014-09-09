@@ -18,7 +18,7 @@
 			{
 				$this->page->form->bind($entry->createComments());
 				$this->page->assign('entry', $entry);
-				$this->page->assign('comments', $entry->getAllComments());
+				$this->page->assign('comments', $entry->getAllComments()->rows);
 				$this->page->assign('entries', \MyBlog\Models\Entries::all()->rows);
 			}
 			else
@@ -33,6 +33,10 @@
 			{
 				$this->page->form->save();
 				\Rum::flash(\Rum::tl('s:Comment has been added!'));
+			}
+			else
+			{
+				\Rum::flash($err);
 			}
 		}
 	}

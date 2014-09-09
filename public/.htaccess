@@ -4,22 +4,28 @@ allow from all
 # Turn Rewrite Engine On
 RewriteEngine On
 
-# Condition /(session)/page/id?vars
-RewriteCond %{REQUEST_URI} /(\((.*)\)/)(.*)/(.+)$
-RewriteRule (\((.*)\)/)?(.*)/(.*)?$ index.php?PHPSESSID=$2&page=$3&id=$4 [L,QSA]
+# This file contains default page routing for typical applications
+# Modify this script as needed
 
-# Condition /(session)/page/?vars
-RewriteCond %{REQUEST_URI} /(\((.*)\)/)(.*)/$
-RewriteRule (\((.*)\)/)?(.*)/(.*)?$ index.php?PHPSESSID=$2&page=$3 [L,QSA]
+# REST Web service routing
 
-# Condition /page/id?vars
-RewriteCond %{REQUEST_URI} /(.*)/(.+)$
-RewriteRule (\((.*)\)/)?(.*)/(.*)?$ index.php?page=$3&id=$4 [L,QSA]
+# /rest/u/{user}/t/{token}/{collection}/
+RewriteRule ^(json|xml|rest)/u/(.+?)/t/(.+?)/(.+)/$ index.php?path=rest/$4&format=$1&uid=$2&token=$3 [L,QSA]
+# /rest/u/{user}/t/{token}/{collection}/{identifier}
+RewriteRule ^(json|xml|rest)/u/(.+?)/t/(.+?)/(.+)/(.+)$ index.php?path=rest/$4&format=$1&uid=$2&token=$3&id=$5 [L,QSA]
+# /rest/{collection}/
+RewriteRule ^(json|xml|rest)/(.+)/$ index.php?path=rest/$2&format=$1&path=rest/$2 [L,QSA]
 
-# Condition /page/?vars
-RewriteCond %{REQUEST_URI} /(.*)/$
-RewriteRule (.*)/(.*)?$ index.php?page=$1 [L,QSA]
+# Page routing with language
 
-# Condition /page?vars
-#RewriteCond %{REQUEST_URI} /(.*)$
-#RewriteRule (.*)?$ index.php?page=$1 [L,QSA]
+# /{lang}/{page}/
+RewriteRule ^([a-z][a-z])/(.*)?/$ index.php?lang=$1&path=$2 [L,QSA]
+# /{lang}/{page}/{identifier}
+RewriteRule ^([a-z][a-z])/(.*)?/(.*)?$ index.php?lang=$1&path=$2&id=$3 [L,QSA]
+
+# Page routing
+
+# /{page}/
+RewriteRule ^(.*)?/$ index.php?path=$1 [L,QSA]
+# /{page}/{identifier}
+RewriteRule ^(.*)?/(.*)?$ index.php?path=$1&id=$2 [L,QSA]

@@ -2,7 +2,7 @@
 
 	namespace MyBlog\Controllers;
 
-	class Blog extends \MyBlog\ApplicationController
+	class Index extends \MyBlog\ApplicationController
 	{
 		public function onPageInit($sender, $args)
 		{
@@ -24,6 +24,10 @@
 
 				\Rum::forward('entry', array('id'=>$this->page->form->dataSource["entry_id"]));
 				\Rum::flash('s:Entry has been added!');
+			}
+			else
+			{
+				\Rum::flash($err);
 			}
 		}
 	}

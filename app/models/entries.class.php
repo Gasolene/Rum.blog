@@ -10,12 +10,12 @@
 
 		protected $fields = array(
 			'title'=>'string',
-			'author'=>'blob',
 			'body'=>'blob'
 		);
 
 		protected $rules = array(
-			'title'=>'required'
+			'title'=>'required',
+			'body'=>'required'
 		);
 
 		protected $relationships	= array(

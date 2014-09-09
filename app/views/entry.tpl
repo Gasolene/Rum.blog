@@ -8,8 +8,7 @@
                         <div class="col-lg-8 col-md-8 col-xs-12 col-sm-8 post1">
                             <div>
                                 <div class="postdate pull-left">
-                                    <div class="month"><?=date('M', strtotime($entry["datetime"]))?></div>
-                                    <div class="day"><?=date('d', strtotime($entry["datetime"]))?></div>
+                                    <div class="month"><?=date('F j, Y', strtotime($entry["datetime"]))?></div>
                                 </div>
                                 <div class="posttext pull-right">
                                     <h3><?=htmlentities($entry["title"])?></h3>
@@ -38,8 +37,9 @@
                                 <hr />
 
 								<?php foreach($comments as $comment) : ?>
+
                                 <div class="comment">
-                                    <div class="avatar pull-left">
+									<div class="avatar pull-left">
                                         <img src="images/avatar.jpg" alt="" />
                                     </div>
                                     <div class="avatarright pull-right">
@@ -50,7 +50,7 @@
                                             <div class="clearfix"></div>
                                         </div>
                                         <div class="text">
-                                            <?=htmlentities($comment["body"]) ?>
+                                            <?=nl2br(htmlentities($comment["body"])) ?>
                                         </div>
                                         <div class="reply">
                                             <i class="fa fa-reply"></i> <a href="#">Reply</a>

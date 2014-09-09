@@ -27,20 +27,19 @@
 			// implement here
 			$this->db->executeBatch("
 CREATE TABLE `comments` (
-  `comment_id` int(10) unsigned NOT NULL auto_increment,
-  `entry_id` int(10) unsigned NOT NULL,
-  `author` varchar(45) NOT NULL,
-  `body` text NOT NULL,
+  `comment_id` INT(10) unsigned NOT NULL auto_increment,
+  `entry_id` INT(10) unsigned NOT NULL,
+  `author` VARCHAR(45) NOT NULL,
+  `body` TEXT NOT NULL,
   `datetime` DATETIME NOT NULL,
   PRIMARY KEY  (`comment_id`),
   KEY `post_id` (`entry_id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
 
 CREATE TABLE `entries` (
-  `entry_id` int(11) NOT NULL auto_increment,
-  `title` varchar(45) NOT NULL,
-  `author` varchar(45) NOT NULL,
-  `body` text NOT NULL,
+  `entry_id` INT(11) NOT NULL auto_increment,
+  `title` VARCHAR(45) NOT NULL,
+  `body` TEXT NOT NULL,
   `datetime` DATETIME NOT NULL,
   PRIMARY KEY  (`entry_id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;");
