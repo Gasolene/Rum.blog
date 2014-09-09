@@ -18,9 +18,6 @@
 									</p>
 									<p> - See more at: <?=\Rum::link(Rum::url('entry', array('id'=>$entry["entry_id"])), 'entry', array('id'=>$entry["entry_id"])) ?></p>
                                     <div class="postbot">
-                                        <div class="pull-left">
-                                            <p class="author"><i class="fa fa-user"></i> <?=htmlentities($entry["author"])?> on <?=date('m/d/y h:i:s', strtotime($entry["datetime"]))?></p>
-                                        </div>
                                         <div class="shareit pull-right">
                                             <span class='st_fblike_hcount' displayText='Facebook Like'></span>
                                             <span class='st_twitter_hcount' displayText='Tweet'></span>
