@@ -7,27 +7,10 @@
                     <div class="row bloginfo">
                         <div class="col-lg-8 col-md-8 col-xs-12 col-sm-8 post1">
                             <div>
+								<?php $this->entries->render() ?>
+
 								<?php foreach($entries as $entry) : ?>
-                                <div class="postdate pull-left">
-                                    <div class="month"><?=date('F j, Y', strtotime($entry["datetime"]))?></div>
-                                </div>
-                                <div class="posttext pull-right">
-                                    <h3><?=htmlentities($entry["title"])?></h3>
-                                    <p>
-										<?=nl2br(htmlentities($entry["body"]))?>
-									</p>
-									<p> - See more at: <?=\Rum::link(Rum::url('entry', array('id'=>$entry["entry_id"])), 'entry', array('id'=>$entry["entry_id"])) ?></p>
-                                    <div class="postbot">
-                                        <div class="shareit pull-right">
-                                            <span class='st_fblike_hcount' displayText='Facebook Like'></span>
-                                            <span class='st_twitter_hcount' displayText='Tweet'></span>
-                                            <span class='st_plusone_hcount' displayText='Google +1'></span>
-                                        </div>
-                                        <div class="clearfix"></div>
-                                    </div>
-                                </div>
-                                <div class="clearfix"></div>
-								<hr />
+                                
 							<?php endforeach; ?>
 							<?php $this->form->begin(array('class'=>'form-horizontal','role'=>'form')) ?>
 								<div class="row leaveareply">
