@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -166,6 +166,22 @@
 			}
 
 			$this->onPost( $request );
+		}
+
+
+		/**
+		 * called when all controls are loaded
+		 *
+		 * @return void
+		 */
+		final public function updateAjaxMasterView()
+		{
+			for( $i = 0, $count = $this->controls->count; $i < $count; $i++ )
+			{
+                $this->controls->itemAt( $i )->updateAjax();
+			}
+
+			$this->onUpdateAjax();
 		}
 
 

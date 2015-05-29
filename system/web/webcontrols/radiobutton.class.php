@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -113,7 +113,6 @@
 			$input = $this->getInputDomObject();
 			$input->setAttribute( 'value', $this->value );
 			$input->setAttribute( 'name',  $this->groupName );
-//			$input->setAttribute( 'class', ' radiobutton' );
 
 			if( $this->visible )
 			{

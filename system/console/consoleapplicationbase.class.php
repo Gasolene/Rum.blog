@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Console;
 	use System\Base\ApplicationBase;
@@ -23,7 +23,7 @@
 		 *
 		 * @return  string
 		 */
-		final protected function getEnv()
+		final public function getEnv()
 		{
 			if(isset($_SERVER["APP_ENV"]))
 			{

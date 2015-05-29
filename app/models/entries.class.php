@@ -10,12 +10,12 @@
 
 		protected $fields = array(
 			'title'=>'string',
-			'body'=>'blob'
+			'body'=>'blob',
 		);
 
 		protected $rules = array(
-			'title'=>'required',
-			'body'=>'required'
+			'title'=>array('required'),
+			'body'=>array('required'),
 		);
 
 		protected $relationships	= array(
@@ -25,7 +25,7 @@
 				'table' => 'comments',
 				'columnRef' => 'entry_id',
 				'columnKey' => 'entry_id',
-				'notNull' => '1'
+				'notNull' => '1',
 		));
 
 		protected function afterCreate() {

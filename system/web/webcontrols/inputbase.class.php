@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -14,15 +14,13 @@
 	 * @property bool $autoFocus specifies whether to auto focus
 	 * @property bool $autoPostBack Specifies whether form will perform postback on change, Default is false
 	 * @property bool $ajaxPostBack specifies whether to perform ajax postback on change, Default is false
-	 * @property bool $ajaxStartHandler specifies the optional ajax start handler
-	 * @property bool $ajaxCompletionHandler specifies the optional ajax completion handler
+	 * @property string $ajaxStartHandler specifies the optional ajax start handler
+	 * @property string $ajaxCompletionHandler specifies the optional ajax completion handler
 	 * @property bool $readonly Specifies whether control is readonly
 	 * @property bool $disabled Specifies whether the control is disabled
-	 * @property string $tooltip Specifies control tooltip
 	 * @property bool $submitted Specifies whether the data has been submitted
 	 * @property bool $changed Specifies whether the data has been changed
 	 * @property bool $disableAutoComplete Specifies whether to disable the browsers auto complete feature
-	 * @property string $placeholder Specifies the text for the placeholder attribute
 	 *
 	 * @package			PHPRum
 	 * @subpackage		Web
@@ -73,12 +71,6 @@
 		protected $disabled					= false;
 
 		/**
-		 * specifies control tool tip
-		 * @var string
-		 */
-		protected $tooltip					= '';
-
-		/**
 		 * Specifies whether the data has been submitted
 		 * @var bool
 		 */
@@ -97,28 +89,10 @@
 		protected $validators				= null;
 
 		/**
-		 * Specifies control label
-		 * @ignore
-		 */
-		protected $label					= '';
-
-		/**
 		 * Specifies whether to disable the browsers auto complete feature
 		 * @var bool
 		 */
 		protected $disableAutoComplete		= false;
-
-		/**
-		 * Specifies the text for the placeholder attribute
-		 * @var string
-		 */
-		protected $placeholder				= '';
-
-		/**
-		 * specifies the id of the default html control
-		 * @ignore
-		 */
-		protected $defaultHTMLControlId		= "";
 
 
 		/**
@@ -135,7 +109,6 @@
 		{
 			parent::__construct( $controlId, $default );
 
-			$this->label       = str_replace( '_', ' ', \ucwords( $controlId )); // Deprecated
 			$this->validators  = new \System\Validators\ValidatorCollection($this);
 
 			// event handling
@@ -180,19 +153,7 @@
 		 * @ignore
 		 */
 		public function __get( $field ) {
-			if( $field === 'defaultHTMLControlId' ) {
-				trigger_error("InputBase::defaultHTMLControlId is deprecated", E_USER_DEPRECATED);
-				return $this->defaultHTMLControlId;
-			}
-			elseif( $field === 'onPost' ) {
-				trigger_error("InputBase::onPost is deprecated", E_USER_DEPRECATED);
-				return $this->onPost;
-			}
-			elseif( $field === 'onChange' ) {
-				trigger_error("InputBase::onChange is deprecated", E_USER_DEPRECATED);
-				return $this->onChange;
-			}
-			elseif( $field === 'autoFocus' ) {
+			if( $field === 'autoFocus' ) {
 				return $this->autoFocus;
 			}
 			elseif( $field === 'autoPostBack' ) {
@@ -210,24 +171,11 @@
 			elseif( $field === 'disableAutoComplete' ) {
 				return $this->disableAutoComplete;
 			}
-			elseif( $field === 'placeholder' ) {
-				return $this->placeholder;
-			}
 			elseif( $field === 'readonly' ) {
 				return $this->readonly;
 			}
 			elseif( $field === 'disabled' ) {
 				return $this->disabled;
-			}
-			elseif( $field === 'label' ) {
-				return $this->label;
-			}
-			elseif( $field === 'tooltip' ) {
-				return $this->tooltip;
-			}
-			elseif( $field === 'tabIndex' ) {
-				trigger_error("InputBase::tabIndex is deprecated", E_USER_DEPRECATED);
-				return 0;
 			}
 			elseif( $field === 'submitted' ) {
 				return $this->submitted;
@@ -250,15 +198,7 @@
 		 * @ignore
 		 */
 		public function __set( $field, $value ) {
-			if( $field === 'onPost' ) {
-				trigger_error("InputBase::onPost is deprecated", E_USER_DEPRECATED);
-				$this->onPost = (string)$value;
-			}
-			elseif( $field === 'onChange' ) {
-				trigger_error("InputBase::onChange is deprecated", E_USER_DEPRECATED);
-				$this->onChange = (string)$value;
-			}
-			elseif( $field === 'autoFocus' ) {
+			if( $field === 'autoFocus' ) {
 				$this->autoFocus = (bool)$value;
 			}
 			elseif( $field === 'autoPostBack' ) {
@@ -273,14 +213,8 @@
 			elseif( $field === 'ajaxCompletionHandler' ) {
 				$this->ajaxCompletionHandler = (string)$ajaxCompletionHandler;
 			}
-			elseif( $field === 'ajaxValidation' ) {
-				trigger_error("InputBase::ajaxValidation is deprecated, use ValidationMessage instead", E_USER_DEPRECATED);
-			}
 			elseif( $field === 'disableAutoComplete' ) {
 				$this->disableAutoComplete = (bool)$value;
-			}
-			elseif( $field === 'placeholder' ) {
-				$this->placeholder = (string)$value;
 			}
 			elseif( $field === 'readonly' ) {
 				$this->readonly = (bool)$value;
@@ -288,32 +222,9 @@
 			elseif( $field === 'disabled' ) {
 				$this->disabled = (bool)$value;
 			}
-			elseif( $field === 'label' ) {
-				trigger_error("InputBase::label is deprecated", E_USER_DEPRECATED);
-				$this->label = (string)$value;
-			}
-			elseif( $field === 'tooltip' ) {
-				$this->tooltip = (string)$value;
-			}
-			elseif( $field === 'tabIndex' ) {
-				trigger_error("InputBase::tabIndex is deprecated", E_USER_DEPRECATED);
-			}
 			else {
 				parent::__set( $field, $value );
 			}
-		}
-
-
-		/**
-		 * sets focus to the control
-		 *
-		 * @return bool			True if changed
-		 * @ignore
-		 */
-		final public function focus()
-		{
-			trigger_error("InputBase::focus() is deprecated", E_USER_DEPRECATED);
-			$this->getParentByType( '\System\Web\WebControls\Page' )->onload .= 'Rum.id(\'' . $this->defaultHTMLControlId . '\').focus();';
 		}
 
 
@@ -366,19 +277,6 @@
 
 
 		/**
-		 * renders error message if control does not validate
-		 *
-		 * @param   array		$args		parameters
-		 * @return void
-		 */
-		public function error( array $args = array() )
-		{
-			trigger_error("InputBase::error() is deprecated, user ErrorMessage instead", E_USER_DEPRECATED);
-			\System\Web\HTTPResponse::write( $this->fetchError( $args ));
-		}
-
-
-		/**
 		 * returns the error message element
 		 *
 		 * @param   array		$args		parameters
@@ -394,7 +292,6 @@
 
 			$domObject = new \System\XML\DomObject('span');
 			$domObject->setAttribute('id', $this->getHTMLControlId().'__err');
-//			$domObject->setAttribute('class', 'warning');
 			if(!$errMsg) {
 				$domObject->setAttribute('style', 'display:none;');
 			}
@@ -425,7 +322,6 @@
 			$input = $this->createDomObject( 'input' );
 			$input->setAttribute( 'name', $this->getHTMLControlId() );
 			$input->setAttribute( 'id', $this->getHTMLControlId() );
-			$input->setAttribute( 'title', $this->tooltip );
 
 			if( $this->autoFocus )
 			{
@@ -434,7 +330,7 @@
 
 			if( $this->submitted && !$this->validate() )
 			{
-				$input->setAttribute( 'class', ' invalid' );
+				$input->appendAttribute( 'class', ' invalid' );
 			}
 
 			if( $this->autoPostBack )
@@ -467,11 +363,6 @@
 				$input->setAttribute( 'autocomplete', 'off' );
 			}
 
-			if( $this->placeholder )
-			{
-				$input->setAttribute( 'placeholder', $this->placeholder );
-			}
-
 			return $input;
 		}
 
@@ -491,17 +382,6 @@
 					$this->value = $viewState['value'];
 				}
 			}
-		}
-
-
-		/**
-		 * called when control is initiated
-		 *
-		 * @return void
-		 */
-		protected function onInit()
-		{
-			$this->defaultHTMLControlId = $this->getHTMLControlId();
 		}
 
 
@@ -573,7 +453,7 @@
 			{
 				$this->events->raise(new \System\Web\Events\InputPostEvent(), $this, $request);
 
-				if( $this->ajaxPostBack )
+				if( $this->ajaxPostBack && \Rum::app()->requestHandler->isAjaxPostBack )
 				{
 					$this->events->raise(new \System\Web\Events\InputAjaxPostEvent(), $this, $request);
 				}
@@ -583,7 +463,7 @@
 			{
 				$this->events->raise(new \System\Web\Events\InputChangeEvent(), $this, $request);
 
-				if( $this->ajaxPostBack )
+				if( $this->ajaxPostBack && \Rum::app()->requestHandler->isAjaxPostBack )
 				{
 					$this->events->raise(new \System\Web\Events\InputAjaxChangeEvent(), $this, $request);
 				}

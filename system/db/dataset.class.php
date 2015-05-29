@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\DB;
 
@@ -1116,18 +1116,6 @@
 			{
 				throw new \System\Base\ArgumentOutOfRangeException("field `$column` does not exist in DataSet");
 			}
-		}
-
-
-		/**
-		 * Requery datasource
-		 *
-		 * @return void
-		 */
-		public function requery()
-		{
-			trigger_error("DataSet::requery() is deprecated, use DataSet::refresh() instead", E_USER_DEPRECATED);
-			$this->refresh();
 		}
 
 

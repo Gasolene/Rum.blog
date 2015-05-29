@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Security;
 
@@ -120,7 +120,7 @@
 		 */
 		public function generateHash($passwordToEncrypt, $salt)
 		{
-			return \System\Security\Authentication::generateHash($this->credential["password-format"], $passwordToEncrypt, (isset($this->credential["salt"])?$this->credential["salt"]:'') . $salt);
+			return \System\Security\Authentication::generateHash(isset($this->credential["password-format"])?$this->credential["password-format"]:'', $passwordToEncrypt, (isset($this->credential["salt"])?$this->credential["salt"]:'') . $salt);
 		}
 
 

@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -49,10 +49,6 @@
 			if( $field === 'maxLength' ) {
 				return $this->maxLength;
 			}
-			elseif( $field === 'watermark' ) {
-				trigger_error("Text::watermark is deprecated, use Text::placeholder instead", E_USER_DEPRECATED);
-				return $this->placeholder;
-			}
 			elseif( $field === 'disableEnterKey' ) {
 				return $this->disableEnterKey;
 			}
@@ -74,10 +70,6 @@
 			if( $field === 'maxLength' ) {
 				$this->maxLength = (int)$value;
 			}
-			elseif( $field === 'watermark' ) {
-				trigger_error("Text::watermark is deprecated, use Text::placeholder instead", E_USER_DEPRECATED);
-				$this->placeholder = (string)$value;
-			}
 			elseif( $field === 'disableEnterKey' ) {
 				$this->disableEnterKey = (bool)$value;
 			}
@@ -95,7 +87,6 @@
 		public function getDomObject()
 		{
 			$input = $this->getInputDomObject();
-//			$input->setAttribute( 'class', ' text' );
 
 			if(!is_null($this->value))
 			{

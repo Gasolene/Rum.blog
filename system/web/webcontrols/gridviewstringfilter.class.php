@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -16,13 +16,6 @@
 	 */
 	class GridViewStringFilter extends GridViewFilterBase
 	{
-		/**
-		 * specifies control tool tip
-		 * @var string
-		 */
-		protected $tooltip					= 'Enter some text and press return';
-
-
 		/**
 		 * process the HTTP request array
 		 *
@@ -75,8 +68,6 @@
 			$input->setAttribute('type', 'search');
 			$input->setAttribute('name', "{$HTMLControlId}__filter_value");
 			$input->setAttribute('value', $this->value);
-			$input->setAttribute('title', $this->tooltip);
-//			$input->setAttribute('class', 'stringfilter');
 
 			if($this->ajaxPostBack)
 			{

@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -30,7 +30,13 @@
 		 * specifies the item text
 		 * @var string
 		 */
-		protected $itemText			= '';
+		protected $itemText				= '';
+
+		/**
+		 * contains tmp args array
+		 * @var array
+		 */
+		private $_args				= array();
 
 
 		/**
@@ -95,27 +101,42 @@
 
 
 		/**
+		 * renders form open tag
+		 *
+		 * @param   array	$args	attribute parameters
+		 * @return void
+		 */
+		public function begin( array $args = array() )
+		{
+			$this->_args = $args;
+			ob_start();
+		}
+
+
+		/**
+		 * renders form close tag
+		 *
+		 * @return void
+		 */
+		public function end()
+		{
+			$this->itemText = '"' . ob_get_clean() . '"';
+			\System\Web\HTTPResponse::write($this->getDomObject()->fetch( $this->_args ));
+		}
+
+
+		/**
 		 * returns a DomObject representing control
 		 *
 		 * @return DomObject
 		 */
 		public function getDomObject()
 		{
-			if(!$this->itemText)
-			{
-				$element = 'ul';
-				$this->itemText = "<li>%{$this->dataField}%</li>";
-			}
-			else
-			{
-				$element = 'div';
-			}
-
-			$dom = new \System\XML\DomObject( $element );
-			$dom->setAttribute( 'id', $this->getHTMLControlId() );
-//			$dom->setAttribute( 'class', ' listview' );
-
 			if(!$this->itemText) $this->itemText = "%{$this->dataField}%";
+
+			// convert object into array
+			$ul = new \System\XML\DomObject('div');
+			$ul->setAttribute( 'id', $this->getHTMLControlId() );
 
 			// convert object into array
 			foreach( $this->dataSource->toArray() as $row )
@@ -126,19 +147,19 @@
 
 				foreach( $row as $field=>$value ) {
 					$values[$field] = $value;
-					$html = \str_replace( '%' . $field . '%', '$values[\''.addslashes($field).'\']', $html );
+					$html = \str_replace( '%' . $field . '%', '$values["'.addslashes($field).'"]', $html );
 				}
 
 				$eval = eval( '$html = ' . $html . ';' );
 				if($eval===false)
 				{
-					throw new \System\Base\InvalidOperationException("Could not run expression in GridView on column `".$column["DataField"]."`: \$html = " . ($html) . ';');
+					throw new \System\Base\InvalidOperationException("Could not run expression: \$html = " . ($html) . ';');
 				}
 
-				$dom->innerHtml .= $html;
+				$ul->innerHtml .= $html;
 			}
 
-			return $dom;
+			return $ul;
 		}
 
 

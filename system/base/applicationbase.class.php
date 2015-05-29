@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Base;
 
@@ -307,8 +307,9 @@
 		{
 			$autoLoaders = Build::get('autoloaders');
 
-			if( is_null( $autoLoaders ))
+			if( is_null( $autoLoaders ) || $this->debug )
 			{
+				$this->timer->pause();
 				$autoLoaders = array();
 
 				$dir = @opendir( __PLUGINS_PATH__ );
@@ -327,6 +328,7 @@
 				}
 
 				Build::put('autoloaders', $autoLoaders);
+				$this->timer->resume();
 			}
 
 			foreach($autoLoaders as $autoLoader)
@@ -346,22 +348,28 @@
 		{
 			$cacheId = 'app-config:' . strtolower( $xmlConfig );
 
-			// Retrieve Appconfig from cache
-			$appConfigObj = Build::get( $cacheId );
-			if($appConfigObj)
+			if(\Rum::app()->getEnv() != __DEV_ENV__ && \Rum::app()->getEnv() != __TEST_ENV__)
 			{
-				$this->config = $appConfigObj;
-				$this->dataAdapter = null;
-				$this->debug = ( $this->config->state == AppState::debug() )?TRUE:FALSE;
-				return;
+				// Retrieve Appconfig from cache
+				$appConfigObj = Build::get( $cacheId );
+				if($appConfigObj)
+				{
+					$this->config = $appConfigObj;
+					$this->dataAdapter = null;
+					$this->debug = ( $this->config->state == AppState::debug() )?TRUE:FALSE;
+
+					return;
+				}
 			}
 
+			$this->timer->pause();
 			// Parse XML file
 			$this->config->loadAppConfig( $xmlConfig );
 			$this->dataAdapter = null;
 			$this->debug = ( $this->config->state == AppState::debug() )?TRUE:FALSE;
 
 			Build::put( $cacheId, $this->config );
+			$this->timer->resume();
 		}
 
 
@@ -446,7 +454,7 @@
 		 *
 		 * @return  string
 		 */
-		abstract protected function getEnv();
+		abstract public function getEnv();
 
 
 		/**

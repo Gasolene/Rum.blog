@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -23,13 +23,19 @@
 		 * Name of the data field in the datasource
 		 * @var InputBase
 		 */
-		protected $controlToValidate				= '';
+		protected $controlToValidate				= null;
 
 		/**
-		 * Specifies the error message
+		 * Contains the error message returned by the validator
 		 * @var string
 		 */
-		protected $errMsg							= '';
+		private $errMsg								= '';
+
+		/**
+		 * contains tmp args array
+		 * @var array
+		 */
+		private $_args								= array();
 
 
 		/**
@@ -42,7 +48,7 @@
 		 * @param  string   $default		Default value
 		 * @return void
 		 */
-		public function __construct( $controlId, InputBase &$controlToValidate = null)
+		public function __construct( $controlId, InputBase &$controlToValidate)
 		{
 			parent::__construct( $controlId );
 
@@ -77,11 +83,11 @@
 		 */
 		public function __set( $field, $value ) {
 			if( $field === 'controlToValidate' ) {
-				if(1) {
+				if($value instanceof InputBase) {
 					$this->controlToValidate = $value;
 				}
 				else {
-					
+					throw new \System\Base\BadMemberCallException("controlToValidate must be type InputBase");
 				}
 			}
 			else {
@@ -108,6 +114,31 @@
 
 
 		/**
+		 * renders form open tag
+		 *
+		 * @param   array	$args	attribute parameters
+		 * @return void
+		 */
+		public function begin( $args = array() )
+		{
+			$this->_args = $args;
+			ob_start();
+		}
+
+
+		/**
+		 * renders form close tag
+		 *
+		 * @return void
+		 */
+		public function end()
+		{
+			$this->errMsg = ob_get_clean();
+			\System\Web\HTTPResponse::write( $this->getDomObject()->fetch( $this->_args ));
+		}
+
+
+		/**
 		 * returns an input DomObject representing control
 		 *
 		 * @return DomObject
@@ -116,7 +147,12 @@
 		{
 			$span = $this->createDomObject( 'span' );
 			$span->setAttribute('id', $this->getHTMLControlId());
-			$span->nodeValue = $this->errMsg;
+			if($this->errMsg) {
+				$span->innerHtml = $this->errMsg;
+			}
+			else {
+				$span->setAttribute('style', 'display:none;');
+			}
 			return $span;
 		}
 
@@ -128,7 +164,17 @@
 		 */
 		protected function onUpdateAjax()
 		{
-			$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("Rum.id('{$this->getHTMLControlId()}').innerHTML='{$this->errMsg}';");
+			if($this->errMsg) {
+				// TODO: move inside Rum.js
+				$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("if(Rum.id('{$this->getHTMLControlId()}')){Rum.id('{$this->getHTMLControlId()}').style.display='inline';}");
+			}
+			else {
+				// TODO: move inside Rum.js
+				$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("if(Rum.id('{$this->getHTMLControlId()}')){Rum.id('{$this->getHTMLControlId()}').style.display='none';}");
+			}
+
+			// TODO: move inside Rum.js
+			$this->getParentByType('\System\Web\WebControls\Page')->loadAjaxJScriptBuffer("if(Rum.id('{$this->getHTMLControlId()}')){Rum.id('{$this->getHTMLControlId()}').innerHTML='{$this->errMsg}';}");
 		}
 	}
 ?>

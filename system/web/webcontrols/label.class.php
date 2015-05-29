@@ -9,7 +9,7 @@
 
 
 	/**
-	 * Represents a Button Control
+	 * Represents a Label Control
 	 *
 	 * @property string $text Specifies button text
 	 *
@@ -23,7 +23,13 @@
 		 * specifies button text
 		 * @var string
 		 */
-		protected $text						= '';
+		protected $text							= '';
+
+		/**
+		 * contains tmp args array
+		 * @var array
+		 */
+		private $_args							= array();
 
 
 		/**
@@ -37,25 +43,7 @@
 		{
 			parent::__construct( $controlId );
 
-			$this->text = $text;
-
-			// event handling
-			/*
-			$this->events->add(new \System\Web\Events\InputPostEvent());
-
-			$onPostMethod = 'on' . ucwords( $this->controlId ) . 'Click';
-			if(\method_exists(\System\Web\WebApplicationBase::getInstance()->requestHandler, $onPostMethod))
-			{
-				$this->events->registerEventHandler(new \System\Web\Events\InputPostEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . $onPostMethod));
-			}
-
-			$onAjaxPostMethod = 'on' . ucwords( $this->controlId ) . 'AjaxClick';
-			if(\method_exists(\System\Web\WebApplicationBase::getInstance()->requestHandler, $onAjaxPostMethod))
-			{
-				$this->ajaxPostBack = true;
-				$this->events->registerEventHandler(new \System\Web\Events\InputAjaxPostEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . $onAjaxPostMethod));
-			}
-			*/
+			$this->text = $text?$text:$controlId;
 		}
 
 
@@ -99,6 +87,31 @@
 
 
 		/**
+		 * renders form open tag
+		 *
+		 * @param   array	$args	attribute parameters
+		 * @return void
+		 */
+		public function begin( $args = array() )
+		{
+			$this->_args = $args;
+			ob_start();
+		}
+
+
+		/**
+		 * renders form close tag
+		 *
+		 * @return void
+		 */
+		public function end()
+		{
+			$this->text = ob_get_clean();
+			\System\Web\HTTPResponse::write( $this->getDomObject()->fetch( $this->_args ));
+		}
+
+
+		/**
 		 * getDomObject
 		 *
 		 * returns a DomObject representing control
@@ -107,15 +120,15 @@
 		 */
 		public function getDomObject()
 		{
-			$span = $this->createDomObject('label');
-			$span->nodeValue = $this->text;
+			$label = $this->createDomObject('label');
+			$label->innerHtml = $this->text;
 
 			if( !$this->visible )
 			{
-				$span->setAttribute( 'style', 'display:none;' );
+				$label->setAttribute( 'style', 'display:none;' );
 			}
 
-			return $span;
+			return $label;
 		}
 	}
 ?>

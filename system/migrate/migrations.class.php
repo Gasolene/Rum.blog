@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Migrate;
 
@@ -46,7 +46,7 @@
 						$statement->execute();
 					}
 					else {
-						trigger_error("Migrations::up() should return a SQLStatement object", E_USER_DEPRECATED);
+						throw new \System\Base\InvalidOperationException("Migrations::up() must return a SQLStatement object");
 					}
 
 					// set version
@@ -83,7 +83,7 @@
 							$statement->execute();
 						}
 						else {
-							trigger_error("Migrations::down() should return a SQLStatement object", E_USER_DEPRECATED);
+							throw new \System\Base\InvalidOperationException("Migrations::down() must return a SQLStatement object");
 						}
 
 						$this->setVersion($migration->version);

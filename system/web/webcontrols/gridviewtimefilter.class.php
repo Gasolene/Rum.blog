@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -18,13 +18,6 @@
 	 */
 	class GridViewTimeFilter extends GridViewFilterBase
 	{
-		/**
-		 * specifies control tool tip
-		 * @var string
-		 */
-		protected $tooltip					= 'Select a time';
-
-
 		/**
 		 * specifies date format
 		 * @var string
@@ -113,8 +106,6 @@
 			$input->setAttribute('type', 'time');
 			$input->setAttribute('name', "{$HTMLControlId}__filter_value");
 			$input->setAttribute('value', !in_array($this->value, array('0000-00-00',NULL))?date($this->dateFormat, strtotime($this->value)):'');
-			$input->setAttribute('title', $this->tooltip);
-//			$input->setAttribute('class', 'timefilter');
 
 			if($this->ajaxPostBack)
 			{

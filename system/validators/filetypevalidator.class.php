@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Validators;
 
@@ -72,9 +72,12 @@
 		 */
 		public function validate($value)
 		{
-			if( array_search( $value['type'], $this->types ) === false )
+			if( $value['type'] )
 			{
-				return false;
+				if( array_search( $value['type'], $this->types ) === false )
+				{
+					return false;
+				}
 			}
 			return true;
 		}

@@ -10,11 +10,11 @@
 
 		protected $fields = array(
 			'author'=>'string',
-			'body'=>'blob'
+			'body'=>'blob',
 		);
 
 		protected $rules = array(
-			'author'=>'required'
+			'author'=>array('required'),
 		);
 
 		protected $relationships	= array(
@@ -24,7 +24,7 @@
 				'table' => 'entries',
 				'columnRef' => 'entry_id',
 				'columnKey' => 'entry_id',
-				'notNull' => '1'
+				'notNull' => '1',
 		));
 
 		protected function afterCreate() {

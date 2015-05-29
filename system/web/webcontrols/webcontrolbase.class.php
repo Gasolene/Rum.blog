@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -236,7 +236,7 @@
 			}
 			elseif( $field === 'needsUpdating' )
 			{
-				$this->needsUpdating = (bool)$value;
+				$this->setNeedsUpdating($value);
 			}
 			elseif( $field === 'parent' )
 			{
@@ -607,8 +607,16 @@
 		 */
 		final public function updateAjax()
 		{
-			if(\Rum::app()->requestHandler->isAjaxPostBack) {
-				$this->onUpdateAjax();
+			if(\Rum::app()->requestHandler->isAjaxPostBack)
+			{
+				for( $i = 0, $count = $this->controls->count; $i < $count; $i++ )
+				{
+					$this->controls->itemAt( $i )->updateAjax();
+				}
+
+				if($this->needsUpdating) {
+					$this->onUpdateAjax();
+				}
 			}
 		}
 
@@ -716,20 +724,6 @@
 
 
 		/**
-		 * creates controlId string for html
-		 *
-		 * @return string	html id string
-		 * @deprecated since version number
-		 * @ignore
-		 */
-		final public function getHTMLControlIdString()
-		{
-			trigger_error('WebControlBase::getHTMLControlIdString() is deprecated, use WebControlBase::getHTMLControlId() instead', E_USER_DEPRECATED);
-			return $this->getHTMLControlId();
-		}
-
-
-		/**
 		 * returns a DomObject representing control
 		 *
 		 * @return DomObject
@@ -799,12 +793,7 @@
 		 *
 		 * @return void
 		 */
-		protected function onPreRender()
-		{
-			if($this->needsUpdating) {
-				$this->updateAjax();
-			}
-		}
+		protected function onPreRender() {}
 
 
 		/**
@@ -979,7 +968,23 @@
 			$this->enableViewState = (bool)$enableViewState;
 			if($this->enableViewState && $this->parent)
 			{
-				$this->parent->setEnableViewState($enableViewState);
+				$this->parent->setEnableViewState(true);
+			}
+		}
+
+
+		/**
+		 * set enableViewState on all child controls
+		 *
+		 * @param  bool $enableViewState viewstate state
+		 * @return void
+		 */
+		private function setNeedsUpdating($needsUpdating = true)
+		{
+			$this->needsUpdating = (bool)$needsUpdating;
+			if($this->needsUpdating && $this->parent)
+			{
+				$this->parent->setNeedsUpdating(true);
 			}
 		}
 	}

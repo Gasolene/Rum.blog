@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Validators;
 
@@ -40,6 +40,9 @@
 		{
 			if(is_array($value))
 			{
+				if(isset($value["tmp_name"])) {
+					return (bool)$value["tmp_name"];
+				}
 				return (bool)$value || $value === '0';
 			}
 			else

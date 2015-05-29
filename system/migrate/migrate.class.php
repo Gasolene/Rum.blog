@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Migrate;
 	use System\Console\ConsoleApplicationBase;
@@ -37,6 +37,7 @@
 
 			$migrations = new Migrations();
 			$this->loadAppConfig( __ENV_PATH__ . '/' . strtolower($env) . __APP_CONF_FILENAME__ );
+			\System\Base\Build::clean();
 
 			if($task=="upgrade")
 			{

@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -32,6 +32,12 @@
 		 */
 		protected $src						= '';
 
+		/**
+		 * contains tmp args array
+		 * @var array
+		 */
+		private $_args						= array();
+
 
 		/**
 		 * Constructor
@@ -45,23 +51,9 @@
 			parent::__construct( $controlId );
 
 			$this->text = $text?$text:$controlId;
-//			$this->label = ''; // deprecated
 
 			// event handling
 			$this->events->add(new \System\Web\Events\InputPostEvent());
-
-			$onPostMethod = 'on' . ucwords( $this->controlId ) . 'Click';
-			if(\method_exists(\System\Web\WebApplicationBase::getInstance()->requestHandler, $onPostMethod))
-			{
-				$this->events->registerEventHandler(new \System\Web\Events\InputPostEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . $onPostMethod));
-			}
-
-			$onAjaxPostMethod = 'on' . ucwords( $this->controlId ) . 'AjaxClick';
-			if(\method_exists(\System\Web\WebApplicationBase::getInstance()->requestHandler, $onAjaxPostMethod))
-			{
-				$this->ajaxPostBack = true;
-				$this->events->registerEventHandler(new \System\Web\Events\InputAjaxPostEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . $onAjaxPostMethod));
-			}
 		}
 
 
@@ -109,6 +101,7 @@
 			}
 		}
 
+
 		/**
 		 * renders form open tag
 		 *
@@ -117,11 +110,8 @@
 		 */
 		public function begin( $args = array() )
 		{
-			$tmp = $this->text;
-			$this->text = '';
-			$result = $this->getDomObject()->fetch( $args );
-			$this->text = $tmp;
-			\System\Web\HTTPResponse::write( str_replace( '</button>', '', $result ));
+			$this->_args = $args;
+			ob_start();
 		}
 
 
@@ -132,7 +122,8 @@
 		 */
 		public function end()
 		{
-			\System\Web\HTTPResponse::write( '</button>' );
+			$this->text = ob_get_clean();
+			\System\Web\HTTPResponse::write( $this->getDomObject()->fetch( $this->_args ));
 		}
 
 
@@ -159,13 +150,7 @@
 				$input->setAttribute( 'disabled', 'disabled' );
 			}
 
-			if( !$this->visible )
-			{
-				$input->setAttribute( 'type', 'hidden' );
-			}
-
-			$input->nodeValue = $this->text;
-//			$input->setAttribute( 'class', ' button' );
+			$input->innerHtml = $this->text;
 
 			if( $this->src )
 			{
@@ -212,7 +197,7 @@
 				$form = $this->getParentByType('\System\Web\WebControls\Form');
 				if($form)
 				{
-					$this->attributes->add('onclick', 'return Rum.submit(Rum.id(\'' . $form->getHTMLControlId() . '\'), ' . ( 'Rum.evalFormResponse);' ));
+					$this->attributes->add('onclick', 'return Rum.submit(Rum.id(\'' . $form->getHTMLControlId() . '\'),'.($this->ajaxStartHandler).','.($this->ajaxCompletionHandler).');' );
 				}
 			}
 		}

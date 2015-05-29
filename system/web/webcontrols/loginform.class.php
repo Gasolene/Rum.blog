@@ -3,26 +3,14 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
 
 	/**
 	 * Represents a LoginForm
-	 *
-	 * @property string $loginFormTitle Specifies the login form title
-	 * @property string $usernameLabelText Specifies the username label text
-	 * @property string $passwordLabelText Specifies the password label text
-	 * @property string $rememberMeLabelText Specifies the remember me label text
-	 * @property string $forgotPasswordLinkLabelText Specifies the forgot password hyperlink text
-	 * @property string $loginButtonLabelText Specifies the login button text
-	 * @property string $forgotPasswordFormTitle Specifies the forgot password form title
-	 * @property string $emailAddressLabelText Specifies the email address label text
-	 * @property string $resetButtonLabelText Specifies the reset button text
-	 * @property string $resetPasswordFormTitle Specifies the reset form title
-	 * @property string $newPasswordLabelText Specifies the new password label text
-	 * @property string $confirmPasswordLabelText Specifies the confirm password label text
+	 * 
 	 * @property string $invalidCredentialsMsg Specifies the message when login failed
 	 * @property string $disabledMsg Specifies the message when account is disabled
 	 * @property string $lockoutMsg Specifies the message when account is locked out
@@ -34,9 +22,12 @@
 	 * @property string $emailSubject Specifies the subject line of the email message
 	 * @property string $emailBody Specifies the body of the email message with template variables {username}, {url}
 	 * @property IMailClient $mailClient Specifies the mail client to send the message with
-	 * @property string $username username textbox
+	 * @property Text $username username textbox
+	 * @property Label $username_label username textbox label
 	 * @property Password $password password textbox
-	 * @property Checkbox $permenant permenant checkbox
+	 * @property Label $password_label password textbox label
+	 * @property Checkbox $remember_me remember me checkbox
+	 * @property Label $remember_me_label remember me checkbox label
 	 * @property Hyperlink $forgot_password forgot password link
 	 * @property Button $login login button
 	 *
@@ -46,78 +37,6 @@
 	 */
 	class LoginForm extends Form
 	{
-		/**
-		 * Specifies the login form title
-		 * @var string
-		 */
-		protected $loginFormTitle				= "Login";
-
-		/**
-		 * Specifies the username label text
-		 * @var string
-		 */
-		protected $usernameLabelText			= "Username";
-
-		/**
-		 * Specifies the password label text
-		 * @var string
-		 */
-		protected $passwordLabelText			= "Password";
-
-		/**
-		 * Specifies the remember me label text
-		 * @var string
-		 */
-		protected $rememberMeLabelText			= "Remember me?";
-
-		/**
-		 * Specifies the forgot password hyperlink label text
-		 * @var string
-		 */
-		protected $forgotPasswordLinkLabelText	= "Forgot password";
-
-		/**
-		 * Specifies the login button text
-		 * @var string
-		 */
-		protected $loginButtonLabelText			= "Login";
-
-		/**
-		 * Specifies the forgot password form title
-		 * @var string
-		 */
-		protected $forgotPasswordFormTitle		= "Reset password";
-
-		/**
-		 ** Specifies the email address label text
-		 * @var string
-		 */
-		protected $emailAddressLabelText		= "E-Mail address";
-
-		/**
-		 ** Specifies the reset button text
-		 * @var string
-		 */
-		protected $resetButtonLabelText			= "Reset";
-
-		/**
-		 * Specifies the reset button text
-		 * @var string
-		 */
-		protected $resetPasswordFormTitle		= "Please enter your new password";
-
-		/**
-		 ** Specifies the new password label text
-		 * @var string
-		 */
-		protected $newPasswordLabelText			= "New password";
-
-		/**
-		 ** Specifies the confirm password label text
-		 * @var string
-		 */
-		protected $confirmPasswordLabelText		= "Confirm password";
-
 		/**
 		 * specifies the message when login failed
 		 * @var string
@@ -161,18 +80,6 @@
 		protected $successMsg					= 'You have successfully logged in';
 
 		/**
-		 * specifies the password validation message
-		 * @var string
-		 */
-		protected $passwordValidationMsg		= 'Password must contain at least 6 characters with at least 1 numeric character';
-
-		/**
-		 * specifies the passwords must match validation message
-		 * @var string
-		 */
-		protected $passwordsMustMatchValidationMsg		= 'Passwords must match';
-
-		/**
 		 * Specifies the from address when email is sent
 		 * @var string
 		 */
@@ -201,6 +108,12 @@
 		 * @var IMailClient
 		 */
 		protected $mailClient;
+
+		/**
+		 * Specifies the form title
+		 * @var string
+		 */
+		private $title;
 
 
 		/**
@@ -362,17 +275,29 @@
 			{
 				return $this->findControl('username');
 			}
+			elseif( $field === 'username_label' )
+			{
+				return $this->findControl('username_label');
+			}
 			elseif( $field === 'password' )
 			{
 				return $this->findControl('password');
+			}
+			elseif( $field === 'password_label' )
+			{
+				return $this->findControl('password_label');
 			}
 			elseif( $field === 'forgot_password' )
 			{
 				return $this->findControl('forgot_password');
 			}
-			elseif( $field === 'permanent' )
+			elseif( $field === 'remember_me' )
 			{
-				return $this->findControl('permanent');
+				return $this->findControl('remember_me');
+			}
+			elseif( $field === 'remember_me_label' )
+			{
+				return $this->findControl('remember_me_label');
 			}
 			elseif( $field === 'login' )
 			{
@@ -399,47 +324,39 @@
 			if( isset( $request[$this->controlId . "_reset"] ) && isset( $request["e"] ) && isset( $request["t"] ))
 			{
 				// Show reset password form
-				$this->legend = $this->resetPasswordFormTitle;
+				$this->title = \Rum::app()->translator->get('password_reset_form');
 				$this->add(new Password('username'));
+				$this->add(new Label('username_label', \Rum::app()->translator->get('password')));
 				$this->add(new Password('password'));
-				$this->add(new Button('login', $this->resetButtonLabelText));
-
-				$this->getControl('username')->label = $this->newPasswordLabelText;
-				$this->getControl('password')->label = $this->confirmPasswordLabelText;
-				$this->getControl('username')->placeholder = $this->newPasswordLabelText;
-				$this->getControl('password')->placeholder = $this->confirmPasswordLabelText;
+				$this->add(new Label('password_label', \Rum::app()->translator->get('confirm_password')));
+				$this->add(new Button('login', \Rum::app()->translator->get('reset_password')));
 
 				$this->getControl('username')->addValidator(new \System\Validators\RequiredValidator());
-				$this->getControl('username')->addValidator(new \System\Validators\CompareValidator('password', '==', $this->passwordsMustMatchValidationMsg));
-				$this->getControl('username')->addValidator(new \System\Validators\PatternValidator('^(?=.*\d).{6,16}$^', $this->passwordValidationMsg));
+				$this->getControl('username')->addValidator(new \System\Validators\CompareValidator('password', '=='));
+				$this->getControl('username')->addValidator(new \System\Validators\PatternValidator('^(?=.*\d).{6,16}$^'));
 			}
 			elseif( isset( $request["forgot_password"] ))
 			{
 				// Show password request email form
-				$this->legend = $this->forgotPasswordFormTitle;
+				$this->title = \Rum::app()->translator->get('password_reset_form');
 				$this->add(new Email('username'));
-				$this->add(new Button('login', $this->resetButtonLabelText));
-
-				$this->getControl('username')->label = $this->emailAddressLabelText;
-				$this->getControl('username')->placeholder = $this->emailAddressLabelText;
+				$this->add(new Label('username_label', \Rum::app()->translator->get('email_address')));
+				$this->add(new Button('login', \Rum::app()->translator->get('reset_password')));
 
 				$this->getControl('username')->addValidator(new \System\Validators\EmailValidator());
 			}
 			else
 			{
 				// Show login form
-				$this->legend = $this->loginFormTitle;
+				$this->title = \Rum::app()->translator->get('login_form');
 				$this->add(new Text('username'));
+				$this->add(new Label('username_label', \Rum::app()->translator->get('username')));
 				$this->add(new Password('password'));
-				$this->add(new CheckBox('permanent'));
-				$this->add(new Button('login', $this->loginButtonLabelText));
-				$this->add(new HyperLink('forgot_password', $this->forgotPasswordLinkLabelText, $this->getQueryString('forgot_password=true')));
-
-				$this->getControl('username')->label = $this->usernameLabelText;
-				$this->getControl('password')->label = $this->passwordLabelText;
-				$this->getControl('permanent')->label = $this->rememberMeLabelText;
-				$this->getControl('username')->placeholder = $this->usernameLabelText;
-				$this->getControl('password')->placeholder = $this->passwordLabelText;
+				$this->add(new Label('password_label', \Rum::app()->translator->get('password')));
+				$this->add(new CheckBox('remember_me'));
+				$this->add(new Label('remember_me_label', \Rum::app()->translator->get('remember_me')));
+				$this->add(new Button('login', \Rum::app()->translator->get('login')));
+				$this->add(new HyperLink('forgot_password', \Rum::app()->translator->get('forgot_password'), $this->getQueryString('forgot_password=true')));
 			}
 		}
 
@@ -568,7 +485,7 @@
 				if( $authenticated )
 				{
 					// Set Auth Cookie
-					\System\Security\FormsAuthentication::redirectFromLoginPage( $this->getControl( 'username' )->value, $this->getControl( 'permanent' )->value );
+					\System\Security\FormsAuthentication::redirectFromLoginPage( $this->getControl( 'username' )->value, $this->getControl( 'remember_me' )->value );
 				}
 				elseif( $disabled )
 				{
@@ -601,15 +518,13 @@
 			$form = $this->getFormDomObject();
 			$fieldset = new \System\XML\DomObject('fieldset');
 			$legend = new \System\XML\DomObject('legend');
-			$legend->innerHtml = '<span>' . $this->legend . '</span>';
+			$legend->innerHtml = '<span>' . $this->title . '</span>';
 			$fieldset->addChild($legend);
 			$dl = new \System\XML\DomObject('dl');
 
 			$dt = new \System\XML\DomObject('dt');
 			$dd = new \System\XML\DomObject('dd');
-			$label = new \System\XML\DomObject('label');
-			$label->nodeValue = $this->username->label;
-			$dt->addChild($label);
+			$dt->addChild($this->username_label->getDomObject());
 			$dd->addChild($this->username->getDomObject());
 			$dl->addChild($dt);
 			$dl->addChild($dd);
@@ -618,9 +533,7 @@
 			{
 				$dt = new \System\XML\DomObject('dt');
 				$dd = new \System\XML\DomObject('dd');
-				$label = new \System\XML\DomObject('label');
-				$label->nodeValue = $this->password->label;
-				$dt->addChild($label);
+				$dt->addChild($this->password_label->getDomObject());
 				$dd->addChild($this->password->getDomObject());
 				if($this->findControl('forgot_password'))
 				{
@@ -630,14 +543,12 @@
 				$dl->addChild($dd);
 			}
 
-			if($this->findControl('permanent'))
+			if($this->findControl('remember_me'))
 			{
 				$dt = new \System\XML\DomObject('dt');
 				$dd = new \System\XML\DomObject('dd');
-				$label = new \System\XML\DomObject('label');
-				$label->nodeValue = $this->permanent->label;
-				$dt->addChild($label);
-				$dd->addChild($this->permanent->getDomObject());
+				$dt->addChild($this->remember_me_label->getDomObject());
+				$dd->addChild($this->remember_me->getDomObject());
 				$dl->addChild($dt);
 				$dl->addChild($dd);
 			}

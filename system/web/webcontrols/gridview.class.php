@@ -13,6 +13,7 @@
 	 *
 	 * @property string $caption
 	 * @property int $pageSize
+	 * @property int $pageMax
 	 * @property int $page
 	 * @property bool $canSort
 	 * @property bool $canFilter
@@ -53,6 +54,12 @@
 		 * @var int
 		 */
 		protected $pageSize					= 20;
+
+		/**
+		 * Max number of pages to display at a time
+		 * @var int
+		 */
+		protected $pageMax					= 10;
 
 		/**
 		 * current grid page
@@ -181,30 +188,6 @@
 		protected $columns;
 
 		/**
-		 * specifies the action to take on mouseover events
-		 * @ignore
-		 */
-		protected $onmouseover				= '';
-
-		/**
-		 * specifies the action to take on onmouseout events
-		 * @ignore
-		 */
-		protected $onmouseout				= '';
-
-		/**
-		 * specifies the action to take on click events
-		 * @ignore
-		 */
-		protected $onclick					= '';
-
-		/**
-		 * specifies the action to take on double click events
-		 * @ignore
-		 */
-		protected $ondblclick				= '';
-
-		/**
 		 * Specifies whether to update rows only, or the entire table on updateAjax()
 		 * @var bool
 		 */
@@ -231,14 +214,8 @@
 
 			// event handling
 			$this->events->add(new \System\Web\Events\PagePostEvent());
-
-			// default events
-			$onPostMethod = 'on' . ucwords( $this->controlId ) . 'Post';
-			if(\method_exists(\System\Web\WebApplicationBase::getInstance()->requestHandler, $onPostMethod))
-			{
-				trigger_error("GridViewPostEvent is deprecated, use PageRequestEvent instead", E_USER_DEPRECATED);
-				$this->events->registerEventHandler(new \System\Web\Events\PagePostEventHandler('\System\Web\WebApplicationBase::getInstance()->requestHandler->' . $onPostMethod));
-			}
+			$this->events->add(new \System\Web\Events\GridViewSortEvent());
+			$this->events->add(new \System\Web\Events\GridViewFilterEvent());
 		}
 
 
@@ -255,6 +232,9 @@
 			}
 			elseif( $field === 'pageSize' ) {
 				return $this->pageSize;
+			}
+			elseif( $field === 'pageMax' ) {
+				return $this->pageMax;
 			}
 			elseif( $field === 'canSort' ) {
 				return $this->canSort;
@@ -316,26 +296,6 @@
 			elseif( $field === 'rowDataField' ) {
 				return $this->rowDataField;
 			}
-			elseif( $field === 'onmouseover' ) {
-				trigger_error("GridView::onmouseover is deprecated, use GridView::render(args) instead", E_USER_DEPRECATED);
-				return $this->onmouseover;
-			}
-			elseif( $field === 'onmouseout' ) {
-				trigger_error("GridView::onmouseout is deprecated, use GridView::render(args) instead", E_USER_DEPRECATED);
-				return $this->onmouseout;
-			}
-			elseif( $field === 'onclick' ) {
-				trigger_error("GridView::onclick is deprecated, use GridView::render(args) instead", E_USER_DEPRECATED);
-				return $this->onclick;
-			}
-			elseif( $field === 'ondblclick' ) {
-				trigger_error("GridView::ondblclick is deprecated, use GridView::render(args) instead", E_USER_DEPRECATED);
-				return $this->ondblclick;
-			}
-			elseif( $field === 'ajaxPostBack' ) {
-				trigger_error("GridView::ajaxPostBack is deprecated", E_USER_DEPRECATED);
-				$false=false;return $false;
-			}
 			elseif( $field === 'updateRowsOnly' ) {
 				return $this->updateRowsOnly;
 			}
@@ -386,6 +346,9 @@
 			elseif( $field === 'pageSize' ) {
 				$this->pageSize = (int)$value;
 			}
+			elseif( $field === 'pageMax' ) {
+				$this->pageMax = (int)$value;
+			}
 			elseif( $field === 'page' ) {
 				$this->page = (int)$value;
 			}
@@ -412,9 +375,6 @@
 			}
 			elseif( $field === 'showPageNumber' ) {
 				$this->showPageNumber = (bool)$value;
-			}
-			elseif( $field === 'showPrimaryKey' ) {
-				trigger_error("GridView::showPrimaryKey is deprecated", E_USER_DEPRECATED);
 			}
 			elseif( $field === 'showInsertRow' ) {
 				$this->showInsertRow = (bool)$value;
@@ -448,26 +408,6 @@
 			}
 			elseif( $field === 'rowDataField' ) {
 				$this->rowDataField = (string) $value;
-			}
-			elseif( $field === 'onmouseover' ) {
-				trigger_error("GridView::onmouseover is deprecated", E_USER_DEPRECATED);
-				$this->onmouseover = (string)$value;
-			}
-			elseif( $field === 'onmouseout' ) {
-				trigger_error("GridView::onmouseout is deprecated", E_USER_DEPRECATED);
-				$this->onmouseout = (string)$value;
-			}
-			elseif( $field === 'onclick' ) {
-				trigger_error("GridView::onclick is deprecated", E_USER_DEPRECATED);
-				$this->onclick = (string)$value;
-			}
-			elseif( $field === 'ondblclick' ) {
-				trigger_error("GridView::ondblclick is deprecated", E_USER_DEPRECATED);
-				$this->ondblclick = (string)$value;
-			}
-			elseif( $field === 'ajaxPostBack' ) {
-				trigger_error("GridView::ajaxPostBack is deprecated", E_USER_DEPRECATED);
-				$this->columns->ajaxPostBack = (bool)$value;
 			}
 			elseif( $field === 'updateRowsOnly' ) {
 				$this->updateRowsOnly = (bool)$value;
@@ -527,151 +467,6 @@
 
 
 		/**
-		 * insert row in DataSet
-		 *
-		 * @return void
-		 */
-		public function insertRow()
-		{
-			trigger_error("GridView::insertRow() is deprecated, use GridViewColumn::fill() instead", E_USER_DEPRECATED);
-			$request = \System\Web\HTTPRequest::$post;
-
-			if( $this->dataSource )
-			{
-				$pkey = '';
-				foreach($this->dataSource->fieldMeta as $meta)
-				{
-					if($meta->primaryKey)
-					{
-						$pkey = $meta->name;
-						break;
-					}
-				}
-
-				if($pkey)
-				{
-					$this->dataSource[$pkey] = null;
-					foreach($this->dataSource->fields as $field)
-					{
-						if(isset($request[str_replace(' ', '_', $field)]))
-						{
-							$this->dataSource[$field] = $request[str_replace(' ', '_', $field)];
-						}
-					}
-					$this->dataSource->insert();
-				}
-				else
-				{
-					throw new \System\Base\InvalidOperationException("GridView::dataSource contains no primary key");
-				}
-			}
-			else
-			{
-				throw new \System\Base\InvalidOperationException("GridView::insertRow() called with null dataSource");
-			}
-		}
-
-
-		/**
-		 * update row in DataSet
-		 *
-		 * @param string $id entity id (primary key value) of the current row
-		 * @return void
-		 */
-		public function updateRow($id)
-		{
-			trigger_error("GridView::insertRow() is deprecated, use GridViewColumn::fill() instead", E_USER_DEPRECATED);
-			$request = \System\Web\HTTPRequest::$post;
-
-			if( $this->dataSource )
-			{
-				$pkey = '';
-				foreach($this->dataSource->fieldMeta as $meta)
-				{
-					if($meta->primaryKey)
-					{
-						$pkey = $meta->name;
-						break;
-					}
-				}
-
-				if($pkey)
-				{
-					if($this->dataSource->seek($pkey, $id))
-					{
-						foreach($this->dataSource->fields as $field)
-						{
-							if(isset($request[str_replace(' ', '_', $field)]))
-							{
-								$this->dataSource[$field] = $request[str_replace(' ', '_', $field)];
-							}
-						}
-						$this->dataSource->update();
-					}
-					else
-					{
-						throw new \System\Base\InvalidOperationException("GridView::dataSource contains no record with primary key `{$id}`");
-					}
-				}
-				else
-				{
-					throw new \System\Base\InvalidOperationException("GridView::dataSource contains no primary key");
-				}
-			}
-			else
-			{
-				throw new \System\Base\InvalidOperationException("GridView::updateRow() called with null dataSource");
-			}
-		}
-
-
-		/**
-		 * delete row in DataSet
-		 *
-		 * @param string $id entity id (primary key value) of the current row
-		 * @return void
-		 */
-		public function deleteRow($id)
-		{
-			trigger_error("GridView::insertRow() is deprecated, use GridViewColumn::fill() instead", E_USER_DEPRECATED);
-			$request = \System\Web\HTTPRequest::$request;
-
-			if( $this->dataSource )
-			{
-				$pkey = '';
-				foreach($this->dataSource->fieldMeta as $meta)
-				{
-					if($meta->primaryKey)
-					{
-						$pkey = $meta->name;
-						break;
-					}
-				}
-
-				if($pkey)
-				{
-					if($this->dataSource->seek($pkey, $id))
-					{
-						$this->dataSource->delete();
-					}
-					else
-					{
-						throw new \System\Base\InvalidOperationException("GridView::dataSource contains no record with primary key `{$id}`");
-					}
-				}
-				else
-				{
-					throw new \System\Base\InvalidOperationException("GridView::dataSource contains no primary key");
-				}
-			}
-			else
-			{
-				throw new \System\Base\InvalidOperationException("GridView::updateRow() called with null dataSource");
-			}
-		}
-
-
-		/**
 		 * fill an existing \ArrayAccess object with data from a GridView button post back
 		 * 
 		 * @param \ArrayAccess $object object to fill
@@ -689,19 +484,6 @@
 					$object[$field] = $request[str_replace(' ', '_', $field)];
 				}
 			}
-		}
-
-
-		/**
-		 * set filter values
-		 *
-		 * @param  array &$filter	Instance of a GridViewFilterBase
-		 * @return void
-		 */
-		final public function setFilterValues($field, array $values)
-		{
-			trigger_error("GridView::setFilterValues() is deprecated, use GridViewColumn::setFilter() instead", E_USER_DEPRECATED);
-			$this->__filterValues[$field] = $values;
 		}
 
 
@@ -739,10 +521,10 @@
 			// filter results
 			if( $this->canFilter ) {
 				$filter_event = new \System\Web\Events\GridViewFilterEvent();
-				if($this->events->contains( $filter_event )) {
+				if($this->events->handles( $filter_event )) {
 					$this->events->raise( $filter_event, $this );
 				}
-				else {
+					else {
 					// filter DataSet
 					$this->columns->filterDataSet( $this->dataSource );
 				}
@@ -752,7 +534,7 @@
 			if( $this->sortBy && $this->canSort) {
 				$sort_event = new \System\Web\Events\GridViewSortEvent();
 
-				if($this->events->contains( $sort_event )) {
+				if($this->events->handles( $sort_event )) {
 					$this->events->raise( $sort_event, $this );
 				}
 				else {
@@ -1164,7 +946,6 @@
 				$th = new \System\XML\DomObject( 'th' );
 
 				// set column attributes
-//				$th->setAttribute( 'class', 'listcolumn' );
 				$th->innerHtml .= $this->listName;
 
 				if( $this->multiple )
@@ -1247,13 +1028,6 @@
 				// add column to header
 				$tr->addChild( $th );
 			}
-
-//			if($this->canChangeOrder)
-//			{
-//				$th = new \System\XML\DomObject('th');
-//				$th->setAttribute( 'class', 'movecolumn' );
-//				$tr->addChild( $th );
-//			}
 
 			return $tr;
 		}
@@ -1563,26 +1337,42 @@
 
 			$td->setAttribute( 'colspan', sizeof( $this->columns ) + $inc );
 
-			$span = new \System\XML\DomObject( 'span' );
-			$span->setAttribute( 'class', 'pagination' );
+			$pagination = new \System\XML\DomObject( 'span' );
+			$pagination->setAttribute( 'class', 'pagination' );
 
-			// prev
-			$a = new \System\XML\DomObject( 'a' );
-			$a->nodeValue .= 'prev';
+			// first
+			$first = new \System\XML\DomObject( 'a' );
+			$first->setAttribute('class', 'first');
+			$first->nodeValue .= 'first';
 			if( $this->page > 1 )
 			{
-				$a->setAttribute( 'href', $this->getQueryString($this->getHTMLControlId().'__page='.($this->page-1).'&'.$this->getHTMLControlId().'__sort_by='.$this->sortBy.'&'.$this->getHTMLControlId().'__sort_order='.$this->sortOrder));
+				$first->setAttribute( 'href', $this->getQueryString($this->getHTMLControlId().'__page=1&'.$this->getHTMLControlId().'__sort_by='.$this->sortBy.'&'.$this->getHTMLControlId().'__sort_order='.$this->sortOrder));
 			}
 			else
 			{
-				$a->setAttribute('class', 'disabled');
+				$first->appendAttribute('class', ' disabled');
 			}
-			$span->addChild( $a );
-			$span->addChild( new \System\XML\TextNode(' '));
+			$pagination->addChild( $first );
+			$pagination->addChild( new \System\XML\TextNode(' '));
+
+			// prev
+			$prev = new \System\XML\DomObject( 'a' );
+			$prev->setAttribute('class', 'prev');
+			$prev->nodeValue .= 'prev';
+			if( $this->page > 1 )
+			{
+				$prev->setAttribute( 'href', $this->getQueryString($this->getHTMLControlId().'__page='.($this->page-1).'&'.$this->getHTMLControlId().'__sort_by='.$this->sortBy.'&'.$this->getHTMLControlId().'__sort_order='.$this->sortOrder));
+			}
+			else
+			{
+				$prev->appendAttribute('class', ' disabled');
+			}
+			$pagination->addChild( $prev );
+			$pagination->addChild( new \System\XML\TextNode(' '));
 
 			// page jump
 			$count = count($this->dataSource);
-			for( $page=1; $this->pageSize && (( $page * $this->pageSize ) - $this->pageSize ) < $count; $page++ )
+			for( $page = ($this->page <= $this->pageMax)?1:floor($this->page / $this->pageMax)*$this->pageMax, $paginationLoop = 1; $this->pageSize && (( $page * $this->pageSize ) - $this->pageSize ) < $count && $paginationLoop <= $this->pageMax; $page++ )
 			{
 				$start = ((( $page * $this->pageSize ) - $this->pageSize ) + 1 );
 
@@ -1601,34 +1391,49 @@
 					$a = new \System\XML\DomObject( 'a' );
 					$a->setAttribute( 'href', $this->getQueryString($this->getHTMLControlId().'__page='.$page.'&'.$this->getHTMLControlId().'__sort_by='.$this->sortBy.'&'.$this->getHTMLControlId().'__sort_order='.$this->sortOrder));
 					$a->nodeValue .= $page;
-					$span->addChild( $a );
-					$span->addChild( new \System\XML\TextNode(' '));
+					$pagination->addChild( $a );
+					$pagination->addChild( new \System\XML\TextNode(' '));
 				}
 				else
 				{
 					$a = new \System\XML\DomObject( 'a' );
 					$a->setAttribute( 'class', 'disabled' );
 					$a->nodeValue .= $page;
-					$span->addChild( $a );
-					$span->addChild( new \System\XML\TextNode(' '));
+					$pagination->addChild( $a );
+					$pagination->addChild( new \System\XML\TextNode(' '));
 				}
+				$paginationLoop++;
 			}
 
 			// next
-			$a = new \System\XML\DomObject( 'a' );
-			$a->nodeValue .= 'next';
+			$next = new \System\XML\DomObject( 'a' );
+			$next->setAttribute('class', 'next');
+			$next->nodeValue .= 'next';
 			if(( $this->page * $this->pageSize ) < $count && $this->pageSize )
 			{
-				$a->setAttribute( 'href', $this->getQueryString($this->getHTMLControlId().'__page='.($this->page+1).'&'.$this->getHTMLControlId().'__sort_by='.$this->sortBy.'&'.$this->getHTMLControlId().'__sort_order='.$this->sortOrder));
+				$next->setAttribute( 'href', $this->getQueryString($this->getHTMLControlId().'__page='.($this->page+1).'&'.$this->getHTMLControlId().'__sort_by='.$this->sortBy.'&'.$this->getHTMLControlId().'__sort_order='.$this->sortOrder));
 			}
 			else
 			{
-				$a->setAttribute('class', 'disabled');
+				$next->appendAttribute('class', ' disabled');
 			}
-			$span->addChild( $a );
-			$span->addChild( new \System\XML\TextNode(' '));
+			$pagination->addChild( $next );
+			$pagination->addChild( new \System\XML\TextNode(' '));
 
-			$td->addChild( $span );
+			// last
+			$last = new \System\XML\DomObject( 'a' );
+			$last->setAttribute('class', 'last');
+			$last->nodeValue .= 'last';
+			if(( $this->page * $this->pageSize ) < $count && $this->pageSize )
+			{
+				$last->setAttribute( 'href', $this->getQueryString($this->getHTMLControlId().'__page='.$count.'&'.$this->getHTMLControlId().'__sort_by='.$this->sortBy.'&'.$this->getHTMLControlId().'__sort_order='.$this->sortOrder));
+			}
+			else
+			{
+				$last->appendAttribute('class', ' disabled');
+			}
+			$pagination->addChild( $last );
+			$pagination->addChild( new \System\XML\TextNode(' '));
 
 			// get page info
 			$start = ((( $this->page * $this->pageSize ) - $this->pageSize ) + 1 );
@@ -1644,11 +1449,27 @@
 				$end = $count;
 			}
 
-			$span = new \System\XML\DomObject( 'span' );
-			$span->setAttribute('class', 'summary');
-			$span->nodeValue .= "showing {$start} to {$end} of " . $count;
+			$current_page = new \System\XML\DomObject( 'span' );
+			$current_page->setAttribute('class', 'page');
 
-			$td->addChild( $span );
+			// Choose Page
+			$totalPageCount = ceil( $count / $this->pageSize );
+
+			$input = new \System\XML\DomObject( 'input' );
+			$input->setAttribute( 'type', 'number');
+			$input->setAttribute( 'value', $this->page );
+
+			$uri = (preg_match("/(page=)\w+/i",$this->getQueryString()))?preg_replace("/(page=)\w+/i", "page='+this.value+'", $this->getQueryString()):$this->getQueryString()."?".$this->getHTMLControlId()."__page='+this.value+'&".$this->getHTMLControlId()."__sort_by=&".$this->getHTMLControlId()."__sort_order=".$this->sortOrder;
+
+			$input->setAttribute( 'onchange', "Rum.evalAsync('{$uri}','','POST')" );
+			$input->setAttribute( 'onchange', "Rum.sendSync('{$uri}')" );
+
+			$current_page->addChild( new \System\XML\TextNode('page '));
+			$current_page->addChild( $input );
+			$current_page->addChild( new \System\XML\TextNode(" of {$totalPageCount} "));
+
+			$td->addChild( $pagination );
+			$td->addChild( $current_page );
 			$tr->addChild( $td );
 
 			return $tr;

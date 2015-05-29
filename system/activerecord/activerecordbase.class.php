@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\ActiveRecord;
 	use System\Web\FormModelBase;
@@ -227,9 +227,9 @@
 				// getAll[Type]Records() = getAllRecordsByType( string $type )
 				elseif( $prefix === 'getAll' && ( $suffix === 'Records' || $suffix === 's' || $suffix === '' ))
 				{
-					if( count($args) <= 1 )
+					if( count($args) <= 3 )
 					{
-						return $this->getAllRecordsByType( $type, isset($args[0])?$args[0]:array() );
+						return $this->getAllRecordsByType( $type, isset($args[0])?$args[0]:array(), isset($args[1])?$args[1]:array(), isset($args[2])?$args[2]:array(), isset($args[3])?$args[3]:array(), isset($args[4])?$args[4]:array() );
 					}
 					else
 					{
@@ -240,9 +240,9 @@
 				// getCount[Type]Records() = findAllRecordsByType( string $type )
 				elseif( $prefix === 'getCount' && ( $suffix === 'Records' || $suffix === 's' || $suffix === '' ))
 				{
-					if( count($args) <= 1 )
+					if( count($args) <= 3 )
 					{
-						return $this->getCountByType( $type, isset($args[0])?$args[0]:array() );
+						return $this->getCountByType( $type, isset($args[0])?$args[0]:array(), isset($args[1])?$args[1]:array(), isset($args[2])?$args[2]:array(), isset($args[3])?$args[3]:array(), isset($args[4])?$args[4]:array() );
 					}
 					else
 					{
@@ -281,7 +281,7 @@
 				{
 					if( count($args) <= 1 )
 					{
-						return $this->findAllRecordsByType( $type, isset($args[0])?$args[0]:array() );
+						return $this->findAllRecordsByType( $type, isset($args[0])?$args[0]:array(), isset($args[1])?$args[1]:array(), isset($args[2])?$args[2]:array(), isset($args[3])?$args[3]:array(), isset($args[4])?$args[4]:array() );
 					}
 					else
 					{
@@ -593,46 +593,13 @@
 
 
 		/**
-		 * static method to find ActiveRecordBases of this type
-		 *
-		 * @param  array		$args		associative array of keys and values
-		 * @return ActiveRecordCollection
-		 */
-		static public function findAll( array $args = array() )
-		{
-			trigger_error("ActiveRecord::findAll(args) is deprecated, use ::all instead", E_USER_DEPRECATED);
-			return ActiveRecordBase::findAllByType( self::getClass(), $args );
-		}
-
-
-		/**
-		 * static method to find the first ActiveRecordBase of this type
-		 *
-		 * @param  string		$args		associative array of keys and values
-		 * @return ActiveRecordBase
-		 */
-		static public function first( array $args = array())
-		{
-			return ActiveRecordBase::firstByType( self::getClass(), $args );
-		}
-
-
-		/**
-		 * static method to find the last ActiveRecordBase of this type
-		 *
-		 * @param  string		$args		associative array of keys and values
-		 * @return ActiveRecordBase
-		 */
-		static public function last( array $args = array() )
-		{
-			return ActiveRecordBase::lastByType( self::getClass(), $args );
-		}
-
-
-		/**
 		 * static method to return a DataSet of this type
 		 *
-		 * @param  array		$args		associative array of keys and values
+		 * @param  array		$columns	array of column names to return
+		 * @param  array		$filter		associative array of column names and values to filter
+		 * @param  array		$sort_by	array of column names to sort by
+		 * @param  int			$offset		number of records to offset
+		 * @param  int			$limit		resultset limit
 		 * @return DataSet
 		 */
 		static public function all( array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
@@ -660,24 +627,32 @@
 		/**
 		 * static method to return an extended DataSet of this type
 		 *
-		 * @param  array		$args		associative array of keys and values
+		 * @param  array		$columns	array of column names to return
+		 * @param  array		$filter		associative array of column names and values to filter
+		 * @param  array		$sort_by	array of column names to sort by
+		 * @param  int			$offset		number of records to offset
+		 * @param  int			$limit		resultset limit
 		 * @return DataSet
 		 */
-		static public function more( array $args = array() )
+		static public function more( array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
 		{
-			return ActiveRecordBase::allExtendedByType( self::getClass(), $args );
+			return ActiveRecordBase::allExtendedByType( self::getClass(), $columns, $filter, $sort_by, $offset, $limit );
 		}
 
 
 		/**
-		 * static method to return a count of the total number of records of this type
+		 * static method to return a count of the number of records of this type
 		 *
-		 * @param  array		$args		associative array of keys and values
+		 * @param  array		$columns	array of column names to return
+		 * @param  array		$filter		associative array of column names and values to filter
+		 * @param  array		$sort_by	array of column names to sort by
+		 * @param  int			$offset		number of records to offset
+		 * @param  int			$limit		resultset limit
 		 * @return DataSet
 		 */
-		static public function total( array $args = array() )
+		static public function countAll( array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
 		{
-			return ActiveRecordBase::countByType( self::getClass(), $args );
+			return ActiveRecordBase::countByType( self::getClass(), $columns, $filter, $sort_by, $offset, $limit );
 		}
 
 
@@ -706,6 +681,8 @@
 				}
 
 				$control = $form->getControl( $field );
+				$form->add(new \System\Web\WebControls\ValidationMessage($field.'_error', $control));
+				$form->add(new \System\Web\WebControls\Label($field.'_label', str_replace( '_', ' ', $field )));
 //				$control->label = ucwords( \System\Base\ApplicationBase::getInstance()->translator->get( $field, str_replace( '_', ' ', $field )));
 
 				// create references
@@ -731,7 +708,7 @@
 					}
 				}
 				// create list
-				else if($type === 'enum')
+				else
 				{
 					$options = array();
 					foreach( $activeRecord->rules[$field] as $rule )
@@ -1074,6 +1051,7 @@
 				{
 					if($gridView->findColumn($field))
 					{
+						$validatorIntance = null;
 						if(false===eval("\$validatorIntance = new {$validator};"))
 						{
 							throw new \System\Base\InvalidOperationException("Cannot create validator: new {$validator};");
@@ -1539,11 +1517,15 @@
 		 * return a collection of child ActiveRecordBase objects by type
 		 *
 		 * @param  string		$type		object type
-		 * @param  string		$args		associative array of keys and values
+		 * @param  array		$columns	array of column names to return
+		 * @param  array		$filter		associative array of column names and values to filter
+		 * @param  array		$sort_by	array of column names to sort by
+		 * @param  int			$offset		number of records to offset
+		 * @param  int			$limit		resultset limit
 		 *
 		 * @return ActiveRecordCollection
 		 */
-		final private function findAllRecordsByType( $type, array $args = array() )
+		final private function findAllRecordsByType( $type, array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
 		{
 			foreach( $this->relationships as $mapping )
 			{
@@ -1559,7 +1541,7 @@
 							->select( $mapping['table'], $mapping['columnRef'] )
 							->from( $this->table );
 
-							foreach( $args as $key => $value )
+							foreach( $filter as $key => $value )
 							{
 								$query->where( $this->table, (string)$key, '=', $value );
 							}
@@ -1592,7 +1574,7 @@
 							->select( $joinTable, $activeRecord->pkey )
 							->from( $this->table );
 
-							foreach( $args as $key => $value )
+							foreach( $filter as $key => $value )
 							{
 								$query->where( $activeRecord->table, (string)$key, '=', $value );
 							}
@@ -1626,11 +1608,15 @@
 		 * return DataSet object with all child records by type
 		 *
 		 * @param  string		$type		object type
-		 * @param  string		$args		associative array of keys and values
+		 * @param  array		$columns	array of column names to return
+		 * @param  array		$filter		associative array of column names and values to filter
+		 * @param  array		$sort_by	array of column names to sort by
+		 * @param  int			$offset		number of records to offset
+		 * @param  int			$limit		resultset limit
 		 *
 		 * @return DataSet					reference to object
 		 */
-		final private function getAllRecordsByType( $type, array $args = array() )
+		final private function getAllRecordsByType( $type, array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
 		{
 			foreach( $this->relationships as $mapping )
 			{
@@ -1646,7 +1632,7 @@
 							->select( $activeRecord->table, '*' )
 							->from( $mapping['table'] );
 
-							foreach( $args as $key => $value )
+							foreach( $filter as $key => $value )
 							{
 								$query->where( $activeRecord->table, (string)$key, '=', $value );
 							}
@@ -1675,7 +1661,7 @@
 						->select( $mapping['table'], '*' )
 						->from( $mapping['table'] );
 
-						foreach( $args as $key => $value )
+						foreach( $filter as $key => $value )
 						{
 							$query->where( $activeRecord->table, (string)$key, '=', $value );
 						}
@@ -1704,11 +1690,15 @@
 		 * return count of all child records by type
 		 *
 		 * @param  string		$type		object type
-		 * @param  string		$args		associative array of keys and values
+		 * @param  array		$columns	array of column names to return
+		 * @param  array		$filter		associative array of column names and values to filter
+		 * @param  array		$sort_by	array of column names to sort by
+		 * @param  int			$offset		number of records to offset
+		 * @param  int			$limit		resultset limit
 		 *
 		 * @return int
 		 */
-		final private function getCountByType( $type, array $args = array() )
+		final private function getCountByType( $type, array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
 		{
 			foreach( $this->relationships as $mapping )
 			{
@@ -1724,7 +1714,7 @@
 							->select( $activeRecord->table, $activeRecord->pkey )
 							->from( $mapping['table'] );
 
-							foreach( $args as $key => $value )
+							foreach( $filter as $key => $value )
 							{
 								$query->where( $activeRecord->table, (string)$key, '=', $value );
 							}
@@ -1753,7 +1743,7 @@
 						->select( $mapping['table'], $mapping['columnRef'] )
 						->from( $mapping['table'] );
 
-						foreach( $args as $key => $value )
+						foreach( $filter as $key => $value )
 						{
 							$query->where( $activeRecord->table, (string)$key, '=', $value );
 						}
@@ -1857,15 +1847,20 @@
 		 * static method to find ActiveRecordBases by type
 		 *
 		 * @param  string		$type		object type
-		 * @param  string		$args		associative array of keys and values
+		 * @param  array		$columns	array of column names to return
+		 * @param  array		$filter		associative array of column names and values to filter
+		 * @param  array		$sort_by	array of column names to sort by
+		 * @param  int			$offset		number of records to offset
+		 * @param  int			$limit		resultset limit
+		 * 
 		 * @return ActiveRecordCollection
 		 */
-		static private function findAllByType( $type, array $args = array() )
+		static private function findAllByType( $type, array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
 		{
 			$activeRecord = new $type();
 			$records = array();
 
-			$ds = ActiveRecordBase::allByType( $type, $args );
+			$ds = ActiveRecordBase::allByType($type, $columns, $filter, $sort_by, $offset, $limit);
 			foreach( $ds->rows as $row )
 			{
 				$records[] = ActiveRecordBase::findByType( $type, array( $activeRecord->pkey => $row[$activeRecord->pkey] ));
@@ -1994,10 +1989,15 @@
 		 * Extended datasets include table data from all mapped tables
 		 *
 		 * @param  string		$type		object type
-		 * @param  array		$args		filter
+		 * @param  array		$columns	array of column names to return
+		 * @param  array		$filter		associative array of column names and values to filter
+		 * @param  array		$sort_by	array of column names to sort by
+		 * @param  int			$offset		number of records to offset
+		 * @param  int			$limit		resultset limit
+		 * 
 		 * @return DataSet
 		 */
-		static private function allExtendedByType( $type, array $args = array() )
+		static private function allExtendedByType( $type, array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
 		{
 			$activeRecord = new $type();
 
@@ -2038,7 +2038,7 @@
 			}
 
 			// filter
-			foreach( $args as $key => $value )
+			foreach( $filter as $key => $value )
 			{
 				$field = explode('.', $key);
 				if(count($field)==2) {
@@ -2063,10 +2063,15 @@
 		 * static method to return a record count
 		 *
 		 * @param  string		$type		object type
-		 * @param  array		$args		filter
+		 * @param  array		$columns	array of column names to return
+		 * @param  array		$filter		associative array of column names and values to filter
+		 * @param  array		$sort_by	array of column names to sort by
+		 * @param  int			$offset		number of records to offset
+		 * @param  int			$limit		resultset limit
+		 * 
 		 * @return int
 		 */
-		static private function countByType( $type, array $args = array() )
+		static private function countByType( $type, array $columns = array(), array $filter = array(), array $sort_by = array(), $offset = 0, $limit = 0 )
 		{
 			$activeRecord = new $type();
 
@@ -2076,7 +2081,7 @@
 			->from( $activeRecord->table );
 
 			// filter
-			foreach( $args as $key => $value )
+			foreach( $filter as $key => $value )
 			{
 				$query->where( $activeRecord->table, $key, '=', $value );
 			}

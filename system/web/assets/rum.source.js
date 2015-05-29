@@ -21,6 +21,11 @@
 		var validationReady = true;
 
 		/**
+		 * Specifies the current form ajax completion handler
+		 */
+		var formCompletionHandler = function(params){};
+
+		/**
 		 * Specifies the default ajax start handler
 		 * @param params parameters
 		 */
@@ -137,10 +142,10 @@
 		 */
 		this.sendSync = function( url, params, method ) {
 
-			if (method === null){
+			if (!method){
 				method = 'GET';
 			}
-			if (params === null){
+			if (!params){
 				params = '';
 			}
 
@@ -181,10 +186,14 @@
 		 * this.to submit html forms
 		 * @param formElement form element
 		 */
-		this.submit = function(formElement) {
+		this.submit = function(formElement, startHandler, completionHandler) {
 
-			var callback = evalFormResponse;
-			createFrame(formElement, callback);
+			var eventArgs = {};
+			if(!startHandler) startHandler = this.defaultAjaxStartHandler;
+			if(!completionHandler) completionHandler = this.defaultAjaxCompletionHandler;
+
+			createFrame(formElement, completionHandler, eventArgs);
+			startHandler(eventArgs);
 			return true;
 		};
 
@@ -394,7 +403,7 @@
 		 */
 		sendHTTPRequest = function(http_request, url, params, method, callback, timeout, timeoutHandler) {
 
-			if (method === null){
+			if (!method){
 				method = 'GET';
 			}
 
@@ -472,12 +481,17 @@
 
 
 		/**
-		 * this.to set the validation ready flag
+		 * handle form responses
 		 * @param formElement form element
 		 * @param response response
 		 */
 		evalFormResponse = function(formElement, response) {
+			// Kludge: this is kludge, no way to set custom completion handler for this event!
+			var eventArgs = {};
+			var completionHandler = formCompletionHandler?formCompletionHandler:Rum.defaultAjaxCompletionHandler;
+
 			eval(response);
+			completionHandler(eventArgs);
 			formElement.removeChild(Rum.id(formElement.getAttribute('id')+'__async'));
 			formElement.setAttribute('target', '');
 		};
@@ -488,8 +502,9 @@
 		 * @param formElement form element
 		 * @param callback callback
 		 */
-		createFrame = function(formElement, callback) {
+		createFrame = function(formElement, completionHandler, eventArgs) {
 
+			var callback = this.evalFormResponse;
 			var frameName = 'f' + Math.floor(Math.random() * 99999);
 			var divElement = document.createElement('DIV');
 			var iFrameElement = document.getElementById(formElement.getAttribute('id') + '__async_postback');
@@ -503,6 +518,7 @@
 
 			document.body.appendChild(divElement);
 
+			formCompletionHandler = completionHandler;
 			var frameElement = document.getElementById(frameName);
 			//if (callback && typeof(callback) == 'this.function =') {
 				frameElement.completeCallback = callback;

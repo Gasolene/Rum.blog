@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\DB;
 
@@ -321,28 +321,6 @@
 		final public function execute( $query )
 		{
 			$this->query($query);
-		}
-
-
-		/**
-		 * Executes a query batch or procedure on the current connection
-		 *
-		 * @param  string		$batch		sql batch query
-		 * @return void
-		 */
-		final public function executeBatch( $batch )
-		{
-			// TODO: very bad!!! avoid!
-//			trigger_error("executeBatch is deprecated!", E_USER_DEPRECATED);
-			$queries = explode( ";", $batch );
-
-			foreach( $queries as $query )
-			{
-				if(trim($query))
-				{
-					$this->execute($query);
-				}
-			}
 		}
 
 

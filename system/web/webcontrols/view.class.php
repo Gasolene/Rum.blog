@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -208,7 +208,7 @@
 					{
 						$this->_parameters[$field] = (array)$value;
 					}
-					elseif($value instanceof \System\Base\ModelBase)
+					elseif($value instanceof \System\Base\IBindable)
 					{
 						$this->_parameters[$field] = $value->toArray();
 					}
@@ -422,6 +422,20 @@
                 $this->master->handleMasterViewPostEvents( $request );
             }
         }
+
+
+		/**
+		 * Event called on ajax callback
+		 *
+		 * @return void
+		 */
+		protected function onUpdateAjax()
+		{
+            if(!is_null($this->master))
+            {
+                $this->master->updateAjaxMasterView();
+            }
+		}
 
 
 		/**

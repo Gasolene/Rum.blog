@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web;
 	use System\Base\ApplicationBase;
@@ -417,13 +417,13 @@
 				$this->prevPage = $this->session[$this->applicationId.'_configuration_forward'];
 			}
 
-			if( $this->debug )
-			{
-				if( isset( $this->session[$this->applicationId.'_debug_warnings'] ))
-				{
-					$this->warnings = array_merge( $this->warnings, unserialize( $this->session[$this->applicationId.'_debug_warnings'] ));
-				}
-			}
+//			if( $this->debug )
+//			{
+//				if( isset( $this->session[$this->applicationId.'_debug_warnings'] ))
+//				{
+//					$this->warnings = array_merge( $this->warnings, unserialize( $this->session[$this->applicationId.'_debug_warnings'] ));
+//				}
+//			}
 		}
 
 
@@ -438,10 +438,10 @@
 			$this->session[$this->applicationId.'_configuration_messages'] = serialize( $this->messages );
 			$this->session[$this->applicationId.'_configuration_forward'] = $this->prevPage;
 
-			if( $this->debug )
-			{
-				$this->session[$this->applicationId.'_debug_warnings'] = serialize( $this->warnings );
-			}
+//			if( $this->debug )
+//			{
+//				$this->session[$this->applicationId.'_debug_warnings'] = serialize( $this->warnings );
+//			}
 		}
 
 
@@ -461,7 +461,7 @@
 		 *
 		 * @return  string
 		 */
-		final protected function getEnv()
+		final public function getEnv()
 		{
 			$env = '';
 			if(isset($_SERVER["APP_ENV"]))
@@ -864,26 +864,10 @@
 			   E_STRICT				=> "Runtime Notice"
 			   );
 
-			if( $errno & ( E_ERROR | E_RECOVERABLE_ERROR | E_USER_ERROR | E_COMPILE_ERROR | E_CORE_ERROR ))
+			if( $errno & error_reporting())
 			{
 				// throw ErrorException on fatal errors
 				throw new \ErrorException($errstr, $errno, 0, $errfile, $errline);
-			}
-			else
-			{
-				if(count($this->warnings)<=__ERROR_LIMIT__+1)
-				{
-					$backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-					array_shift( $backtrace );
-					array_shift( $backtrace );
-
-					// add error to warnings
-					array_push( $this->warnings, array('errno'		=> $errno,
-														'errstr'	=> $errstr,
-														'errfile'	=> $errfile,
-														'errline'	=> $errline,
-														'backtrace'	=> $backtrace ));
-				}
 			}
 		}
 
@@ -1045,12 +1029,12 @@ No building is needed or allowed in a production environment.</p>
 						\System\Web\HTTPResponse::write( "</pre><pre><strong>Rebuilding files...</strong>\r\n" );
 						\System\Web\HTTPResponse::write( $build );
 						\System\Web\HTTPResponse::write( "\r\n<strong>Build complete...</strong></pre>" );
-						\System\Web\HTTPResponse::write( "
-
-<p class=\"dump\" id=\"debug_show\"><a href=\"#debug_dump\" onclick=\"document.getElementById('debug_info').style.display='block';document.getElementById('debug_show').style.display='none';\">Show Debug Information</a></p>
-<div style=\"display:none;\" id=\"debug_info\">");
-
-						$this->dumpDebug();
+//						\System\Web\HTTPResponse::write( "
+//
+//<p class=\"dump\" id=\"debug_show\"><a href=\"#debug_dump\" onclick=\"document.getElementById('debug_info').style.display='block';document.getElementById('debug_show').style.display='none';\">Show Debug Information</a></p>
+//<div style=\"display:none;\" id=\"debug_info\">");
+//
+//						$this->dumpDebug();
 
 						\System\Web\HTTPResponse::write( "
 </div>
@@ -1067,38 +1051,17 @@ No building is needed or allowed in a production environment.</p>
 					}
 					elseif($request->get[\Rum::config()->requestParameter]=='dev' && $request->get["id"]=="run_all")
 					{
-						trigger_error("URI mapping dev/run_all is deprecated, use test/run_all instead", E_USER_DEPRECATED);
 						$tester = new \System\Test\Tester();
 						$tester->runAllTestCases(new \System\Test\HTMLTestReporter());
 						exit;
 					}
 					elseif($request->get[\Rum::config()->requestParameter]=='dev/run_unit_test' )
 					{
-						trigger_error("URI mapping dev/run_unit_test is deprecated, use test/run_unit_test instead", E_USER_DEPRECATED);
 						$tester = new \System\Test\Tester();
 						$tester->runUnitTestCase($request->get["id"], new \System\Test\HTMLTestReporter());
 						exit;
 					}
 					elseif($request->get[\Rum::config()->requestParameter]=='dev/run_functional_test' )
-					{
-						trigger_error("URI mapping dev/run_functional_test is deprecated, use test/run_functional_test instead", E_USER_DEPRECATED);
-						$tester = new \System\Test\Tester();
-						$tester->runFunctionalTestCase($request->get["id"], new \System\Test\HTMLTestReporter());
-						exit;
-					}
-					elseif($request->get[\Rum::config()->requestParameter]=='test' && $request->get["id"]=="run_all")
-					{
-						$tester = new \System\Test\Tester();
-						$tester->runAllTestCases(new \System\Test\HTMLTestReporter());
-						exit;
-					}
-					elseif($request->get[\Rum::config()->requestParameter]=='test/run_unit_test' )
-					{
-						$tester = new \System\Test\Tester();
-						$tester->runUnitTestCase($request->get["id"], new \System\Test\HTMLTestReporter());
-						exit;
-					}
-					elseif($request->get[\Rum::config()->requestParameter]=='test/run_functional_test' )
 					{
 						$tester = new \System\Test\Tester();
 						$tester->runFunctionalTestCase($request->get["id"], new \System\Test\HTMLTestReporter());
@@ -1118,6 +1081,7 @@ No building is needed or allowed in a production environment.</p>
 		 */
 		private function insertDebug( \System\Web\HTTPResponse $response, $ttl=0 )
 		{
+			return;
 			if( $this->debug )
 			{
 				$raw = \System\Web\HTTPResponse::getResponseContent();

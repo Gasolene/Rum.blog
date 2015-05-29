@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Web\WebControls;
 
@@ -22,6 +22,8 @@
 	 * @property string $encodeType form encoding type
 	 * @property string $forward controller to forward to
 	 * @property bool $ajaxPostBack specifies whether to perform ajax postback, Default is false
+	 * @property string $ajaxStartHandler specifies the optional ajax start handler
+	 * @property string $ajaxCompletionHandler specifies the optional ajax completion handler
 	 * @property string $honeyPot specifies the content of the honeypot field
 	 * @property string $submitted specifies if form was submitted
 	 * @property RequestParameterCollection $parameters form parameters
@@ -32,13 +34,6 @@
 	 */
 	class Form extends WebControlBase
 	{
-		/**
-		 * Fieldset legend, Default is none
-		 * @var string
-		 * @ignore
-		 */
-		protected $legend				= '';
-
 		/**
 		 * URL to send form data, Default is self
 		 * @var string
@@ -68,6 +63,18 @@
 		 * @var bool
 		 */
 		protected $ajaxPostBack			= false;
+
+		/**
+		 * specifies the optional ajax start handler
+		 * @var string
+		 */
+		public $ajaxStartHandler			= 'null';
+
+		/**
+		 * specifies the optional ajax completion handler
+		 * @var string
+		 */
+		public $ajaxCompletionHandler		= 'null';
 
 		/**
 		 * specifies whether to check for hidden field before processing request
@@ -138,11 +145,7 @@
 		 */
 		public function __set( $field, $value )
 		{
-			if( $field === 'legend' )
-			{
-				$this->legend = (string)$value;
-			}
-			elseif( $field === 'action' )
+			if( $field === 'action' )
 			{
 				$this->action = (string)$value;
 			}
@@ -172,27 +175,15 @@
 			{
 				$this->setAjaxPostBack($value);
 			}
-			elseif( $field === 'ajaxValidation' )
-			{
-				trigger_error("Form::ajaxValidation is deprecated, use ValidationMessage instead", E_USER_DEPRECATED);
+			elseif( $field === 'ajaxStartHandler' ) {
+				$this->ajaxStartHandler = (string)$ajaxStartHandler;
 			}
-			elseif( $field === 'autoFocus' )
-			{
-				trigger_error("Form::autoFocus is deprecated, use InputBase::autoFocus instead", E_USER_DEPRECATED);
-			}
-			elseif( $field === 'hiddenField' )
-			{
-				trigger_error("Form::hiddenField is deprecated, use Form::honeyPot instead", E_USER_DEPRECATED);
-				$this->honeyPot = (string)$value;
+			elseif( $field === 'ajaxCompletionHandler' ) {
+				$this->ajaxCompletionHandler = (string)$ajaxCompletionHandler;
 			}
 			elseif( $field === 'honeyPot' )
 			{
 				$this->honeyPot = (string)$value;
-			}
-			elseif( $field === 'onPost' )
-			{
-				trigger_error("Form::onPost is deprecated", E_USER_DEPRECATED);
-				$this->onPost = (string)$value;
 			}
 			else
 			{
@@ -210,11 +201,7 @@
 		 */
 		public function __get( $field )
 		{
-			if( $field === 'legend' )
-			{
-				return $this->legend;
-			}
-			elseif( $field === 'action' )
+			if( $field === 'action' )
 			{
 				return $this->action;
 			}
@@ -230,40 +217,23 @@
 			{
 				return $this->forward;
 			}
-			elseif( $field === 'autoFocus' )
-			{
-				trigger_error("Form::autoFocus is deprecated, use InputBase::autoFocus instead", E_USER_DEPRECATED);
-				return false;
-			}
 			elseif( $field === 'ajaxPostBack' )
 			{
 				return $this->ajaxPostBack;
+			}
+			elseif( $field === 'ajaxStartHandler' ) {
+				return $this->ajaxStartHandler;
+			}
+			elseif( $field === 'ajaxCompletionHandler' ) {
+				return $this->ajaxCompletionHandler;
 			}
 			elseif( $field === 'honeyPot' )
 			{
 				return $this->honeyPot;
 			}
-			elseif( $field === 'onPost' )
-			{
-				trigger_error("Form::onPost is deprecated", E_USER_DEPRECATED);
-				return $this->onPost;
-			}
 			elseif( $field === 'submitted' )
 			{
 				return $this->submitted;
-			}
-			elseif( $field === 'submit' )
-			{
-				if(null===$this->findControl('submit')) {
-					trigger_error("ActiveRecordBase::form()->submit is deprecated, no longer generates a submit button", E_USER_DEPRECATED);
-					try {
-						$this->add(new Button('submit'));
-					}
-					catch(\Exception $e) {
-						throw new \System\Base\InvalidOperationException("ActiveRecordBase::form()->submit is no longer generated");
-					}
-				}
-				return $this->findControl('submit');
 			}
 			else
 			{
@@ -353,20 +323,6 @@
 		 *
 		 * @param   array	$args	attribute parameters
 		 * @return void
-		 * @ignore
-		 */
-		public function start( $args = array() )
-		{
-			trigger_error("Form::start() is deprecated, use Form::begin() instead", E_USER_DEPRECATED);
-			$this->begin( $args );
-		}
-
-
-		/**
-		 * renders form open tag
-		 *
-		 * @param   array	$args	attribute parameters
-		 * @return void
 		 */
 		public function begin( $args = array() )
 		{
@@ -395,6 +351,7 @@
 		{
 			$form = $this->getFormDomObject();
 			$buttons = array();
+			$labels = array();
 			$fieldset = '';
 			$dl = '';
 
@@ -409,6 +366,10 @@
 				elseif( $childControl instanceof Button )
 				{
 					$buttons[] = $childControl;
+				}
+				elseif( $childControl instanceof Label )
+				{
+					$labels[] = $childControl;
 				}
 				else
 				{
@@ -427,20 +388,23 @@
 					$dt = '<dt>';
 					$dd = '<dd>';
 
-					// create label
-					$dt .= '<label for="'.$childControl->getHTMLControlId().'">' . $childControl->label . '</label>';
+					// Get input control
+					if($this->controls->contains($childControl->controlId.'_label')) {
+						$dt .= $this->controls->{$childControl->controlId.'_label'}->fetch(array('for'=>$childControl->controlId));
+					}
+					else {
+						// create label
+						$dt .= '<label for="'.$childControl->getHTMLControlId().'">' . $childControl->controlId . '</label>';
+					}
 
 					// Get input control
 					$dd .= $childControl->fetch();
 
 				  	// create validation message span tag
 					$errMsg = '';
-					if( $this->submitted )
-					{
+					if( $this->submitted ) {
 						$childControl->validate($errMsg);
 					}
-
-					$dd .= $childControl->fetchError(array('class'=>'warning'));
 
 					$dl .= $dt . '</dt>';
 					$dl .= $dd . '</dd>';
@@ -461,7 +425,6 @@
 			if($dl)
 			{
 				$fieldset .= '<fieldset>';
-				$fieldset .= '<legend><span>' . $this->legend . '</span></legend>';
 				$fieldset .= '<dl>';
 				$fieldset .= $dl;
 				$fieldset .= '</dl>';
@@ -487,7 +450,6 @@
 			$form->setAttribute( 'action', $this->action );
 			$form->setAttribute( 'method', strtolower( $this->method ));
 			$form->setAttribute( 'enctype', $this->encodeType );
-//			$form->setAttribute( 'class', ' form' );
 
 			if( $this->_onsubmit )
 			{
@@ -579,7 +541,7 @@
 			// perform ajax request
 			if( $this->ajaxPostBack )
 			{
-				$this->_onsubmit = "return Rum.submit(this, " . ( 'Rum.evalFormResponse);' );
+				$this->_onsubmit = 'return Rum.submit(this,'.($this->ajaxStartHandler).','.($this->ajaxCompletionHandler).');';
 			}
 		}
 

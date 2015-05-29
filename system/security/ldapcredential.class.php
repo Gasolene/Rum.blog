@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Security;
 
@@ -137,7 +137,9 @@
 					$result = ldap_search($ldapconn, $ldaptree, $filter, $ldapattributes);
 					$userInfo = ldap_get_entries($ldapconn, $result);					
 
-					return $userInfo[0];
+					if(is_array($userInfo[0])) {
+						return $userInfo[0];
+					}
 				}
 
 				ldap_close($ldapconn); 

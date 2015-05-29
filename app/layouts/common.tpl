@@ -5,24 +5,24 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="description" content="">
         <meta name="author" content="">
-        <link rel="shortcut icon" href="<?=\Rum::config()->themesURI?>/theme1/ico/favicon.png">
+        <link rel="shortcut icon" href="<?=\Rum::baseURI()?>/assets/ico/favicon.png">
 
         <title>Blog</title>
 
         <!-- Bootstrap core CSS -->
-        <link href="<?=\Rum::config()->themesURI?>/theme1/css/bootstrap.css" rel="stylesheet">
+        <link href="<?=\Rum::baseURI()?>/assets/css/bootstrap.css" rel="stylesheet">
 
         <!-- Custom styles for this template -->
-        <link href="<?=\Rum::config()->themesURI?>/theme1/css/style.css" rel="stylesheet">
+        <link href="<?=\Rum::baseURI()?>/assets/css/style.css" rel="stylesheet">
 
         <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
-          <script src="js/html5shiv.js"></script>
-          <script src="js/respond.min.js"></script>
+          <script src="<?=\Rum::baseURI()?>/assets/js/html5shiv.js"></script>
+          <script src="<?=\Rum::baseURI()?>/assets/js/respond.min.js"></script>
         <![endif]-->
 
         <!-- Font Awesome -->
-        <link rel="stylesheet" href="<?=\Rum::config()->themesURI?>/theme1/css/font-awesome.min.css">
+        <link rel="stylesheet" href="<?=\Rum::baseURI()?>/assets/css/font-awesome.min.css">
 
 
 
@@ -129,17 +129,17 @@
         <!-- Bootstrap core JavaScript
         ================================================== -->
         <!-- Placed at the end of the document so the pages load faster -->
-        <script src="<?=\Rum::config()->themesURI?>/theme1/js/jquery-2.0.3.min.js"></script>
-        <script src="<?=\Rum::config()->themesURI?>/theme1/js/bootstrap.min.js"></script>
+        <script src="<?=\Rum::baseURI()?>/assets/js/jquery-2.0.3.min.js"></script>
+        <script src="<?=\Rum::baseURI()?>/assets/js/bootstrap.min.js"></script>
 
         <script type="text/javascript" src="http://w.sharethis.com/button/buttons.js"></script>
         <script type="text/javascript">stLight.options({publisher: "eda0e1f9-f28a-45d6-8b94-a79358066c40", doNotHash: false, doNotCopy: false, hashAddressBar: false});</script>
 
         <!-- Template custom JS  -->
-        <script type="text/javascript" src="<?=\Rum::config()->themesURI?>/theme1/js/template-blog.js"></script>
+        <script type="text/javascript" src="<?=\Rum::baseURI()?>/assets/js/template-blog.js"></script>
 
         <!-- Retina  -->
-        <script src="<?=\Rum::config()->themesURI?>/theme1/js/retina.js"></script>
+        <script src="<?=\Rum::baseURI()?>/assets/js/retina.js"></script>
 
 
     </body>

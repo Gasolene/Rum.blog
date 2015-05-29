@@ -3,7 +3,7 @@
 	 * @license			see /docs/license.txt
 	 * @package			PHPRum
 	 * @author			Darnell Shinbine
-	 * @copyright		Copyright (c) 2013
+	 * @copyright		Copyright (c) 2015
 	 */
 	namespace System\Base;
 	use \System\Collections\CollectionBase;
@@ -131,6 +131,31 @@
 			else
 			{
 				throw new \System\Base\InvalidArgumentException("Argument 1 passed to ".get_class($this)."::contains() must be an object of type EventBase");
+			}
+		}
+
+
+		/**
+		 * returns true if item array contains item
+		 *
+		 * @param  EventBase	$item		item
+		 * @return bool						true if item found
+		 */
+		public function handles( $item )
+		{
+			if( $item instanceof EventBase )
+			{
+				foreach( $this->eventHandlers as $eventHandler )
+				{
+					if( $eventHandler->event === $item->name )
+					{
+						return true;
+					}
+				}
+			}
+			else
+			{
+				throw new \System\Base\InvalidArgumentException("Argument 1 passed to ".get_class($this)."::handles() must be an object of type EventBase");
 			}
 		}
 
