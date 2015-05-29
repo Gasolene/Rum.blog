@@ -176,3 +176,6 @@ pip-log.txt
 .DS_Store
 /.cache/
 /.build/
+plink.exe
+*.exe
+unzip32.dll
